@@ -869,14 +869,7 @@ def get_all_memories(prompt: str, user_name: str) -> dict:
 # Initialize the agent
 @st.cache_resource
 def initialize_agent():
-    # Try to get API key from Streamlit secrets first, then fall back to environment variable
-    try:
-        api_key = st.secrets.get("GOOGLE_API_KEY", os.environ.get("GOOGLE_API_KEY"))
-    except:
-        api_key = os.environ.get("GOOGLE_API_KEY")
-    
-    if not api_key:
-        raise ValueError("GOOGLE_API_KEY not found in secrets or environment variables")
+    api_key = os.environ.get("GEMINI_API_KEY")
     
     model = GeminiModel(
         client_args={
