@@ -1,0 +1,8 @@
+streamlit
+google-generativeai
+python-dotenv
+Pillow
+countryinfo
+tavily-python
+strands-ai
+mem0ai
