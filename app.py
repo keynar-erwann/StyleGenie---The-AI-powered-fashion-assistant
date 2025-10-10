@@ -919,7 +919,7 @@ with st.sidebar:
     st.markdown(f"### {get_text('conversations')}")
     
     # New chat button
-    if st.button(get_text('new_chat'), use_container_width=True, type="primary"):
+    if st.button(get_text('new_chat'), width=True, type="primary"):
         new_conv = create_new_conversation()
         st.session_state.conversations[new_conv['id']] = new_conv
         st.session_state.current_conversation_id = new_conv['id']
@@ -954,7 +954,7 @@ with st.sidebar:
                 if st.button(
                     f"{'🔵 ' if is_current else ''}{preview}",
                     key=f"conv_{conv_id}",
-                    use_container_width=True,
+                    width=True,
                     disabled=is_current
                 ):
                     # Switch to this conversation
@@ -1002,7 +1002,7 @@ with st.sidebar:
         if uploaded_file is not None:
             image = Image.open(uploaded_file)
             st.session_state.uploaded_image = image
-            st.image(image, caption=get_text('uploaded_image'), use_container_width=True)
+            st.image(image, caption=get_text('uploaded_image'), width=True)
             
             # Save the image temporarily
             image.save("temp_uploaded_image.jpg")
@@ -1013,7 +1013,7 @@ with st.sidebar:
         if camera_photo is not None:
             image = Image.open(camera_photo)
             st.session_state.uploaded_image = image
-            st.image(image, caption=get_text('captured_image'), use_container_width=True)
+            st.image(image, caption=get_text('captured_image'), width=True)
             
             # Save the image temporarily
             image.save("temp_uploaded_image.jpg")
@@ -1021,7 +1021,7 @@ with st.sidebar:
     st.markdown("---")
     
     # Clear current chat button
-    if st.button(get_text('clear_chat'), use_container_width=True):
+    if st.button(get_text('clear_chat'), width=True):
         # Clear messages in current conversation
         if st.session_state.current_conversation_id in st.session_state.conversations:
             st.session_state.conversations[st.session_state.current_conversation_id]['messages'] = []
@@ -1047,7 +1047,7 @@ for message in st.session_state.messages:
         
         # Display images if present
         if "image" in message and message["image"]:
-            st.image(message["image"], caption=get_text('generated_image'), use_container_width=True)
+            st.image(message["image"], caption=get_text('generated_image'), width=True)
 
 # Chat input
 if prompt := st.chat_input(get_text('chat_placeholder')):
@@ -1104,7 +1104,7 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             # Check if a new image was generated and display it
             generated_image_path = st.session_state.latest_generated_image
             if generated_image_path:
-                st.image(generated_image_path, caption=get_text('generated_image'), use_container_width=True)
+                st.image(generated_image_path, caption=get_text('generated_image'), width=True)
             
             # Add assistant message to chat (ensure serializable)
             message_to_save = {
