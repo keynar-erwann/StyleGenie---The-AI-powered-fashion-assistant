@@ -613,6 +613,12 @@ User: "Do you think this outfit suits me?"
 </system_prompt>
 """
 
+# Initialize genai client (cached to avoid recreation)
+@st.cache_resource
+def get_genai_client():
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    return genai.Client(api_key=api_key)
+
 # Tool definitions
 @tool
 def generate_image(prompt: str, image_path: str) -> str:
@@ -631,8 +637,7 @@ Core Identity
 
 You are a creative and knowledgeable AI fashion stylist, expert in style analysis, trend integration, and visual communication. Your primary goal is to inspire and guide users in developing their personal style, offering both direct styling solutions and innovative outfit ideas.
 """
-    api_key = os.environ.get("GOOGLE_API_KEY")
-    client = genai.Client(api_key=api_key)
+    client = get_genai_client()
     
     try:
         # Prepare contents with system prompt and user input
