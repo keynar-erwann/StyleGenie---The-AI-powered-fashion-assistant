@@ -14,9 +14,31 @@ import base64
 from datetime import datetime
 import json
 import uuid
+import warnings
 
 # Load environment variables
 load_dotenv()
+
+# Suppress the AttributeError warning from google.genai.Client.__del__
+# This is a known issue with google-genai in Python 3.13
+warnings.filterwarnings('ignore', message=".*'Client' object has no attribute '_api_client'.*")
+
+# Monkey patch to fix the genai.Client.__del__ issue
+original_client_del = genai.Client.__del__
+
+def safe_client_del(self):
+    """Safe destructor that handles missing _api_client attribute"""
+    try:
+        if hasattr(self, '_api_client'):
+            original_client_del(self)
+    except AttributeError:
+        # Silently ignore the AttributeError
+        pass
+    except Exception:
+        # Ignore other exceptions during cleanup
+        pass
+
+genai.Client.__del__ = safe_client_del
 
 # Language translations
 TRANSLATIONS = {
@@ -616,6 +638,7 @@ User: "Do you think this outfit suits me?"
 # Initialize genai client (cached to avoid recreation)
 @st.cache_resource
 def get_genai_client():
+    """Initialize and return a Google GenAI client with proper error handling"""
     # Try to get API key from Streamlit secrets first, then fall back to environment variable
     try:
         api_key = st.secrets.get("GOOGLE_API_KEY", os.environ.get("GOOGLE_API_KEY"))
