@@ -30,17 +30,17 @@ Before you begin, ensure you have:
   - [Google Gemini API](https://ai.google.dev/)
   - [Tavily API](https://tavily.com/) (for web search)
   - [Mem0 AI](https://mem0.ai/) (for memory management)
-  
 
 ## 🛠️ Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone [https://github.com/yourusername/stylegenie.git](https://github.com/yourusername/stylegenie.git)
-   cd stylegenie
+### 1. Clone the repository
+```bash
+git clone https://github.com/keynar-erwann/StyleGenie---The-AI-powered-fashion-assistant.git
+cd StyleGenie---The-AI-powered-fashion-assistant
+```
 
-Create a virtual environment
-bash
+### 2. Create a virtual environment
+```bash
 python -m venv my_env
 
 # On Windows:
@@ -48,72 +48,107 @@ my_env\Scripts\activate
 
 # On macOS/Linux:
 source my_env/bin/activate
-Install dependencies
-bash
+```
+
+### 3. Install dependencies
+```bash
 pip install -r requirements.txt
-Set up environment variables
-Copy .env.example to 
-.env
-bash
+```
+
+### 4. Set up environment variables
+Copy `.env.example` to `.env`:
+```bash
+# On Windows:
+copy .env.example .env
+
+# On macOS/Linux:
 cp .env.example .env
-Edit 
-.env
- and add your API keys
-🎯 Usage
-Running the App
-bash
-streamlit run frontend_2.py
+```
+
+Edit `.env` and add your API keys:
+```env
+GOOGLE_API_KEY=your_google_api_key_here
+TAVILY_API_KEY=your_tavily_api_key_here
+MEM0_API_KEY=your_mem0_api_key_here
+```
+
+## 🎯 Usage
+
+### Running the App
+
+```bash
+streamlit run app.py
+```
+
 Or use the batch file (Windows):
-
-bash
+```bash
 run_streamlit.bat
-The app will open in your default browser at http://localhost:8501
+```
 
-How to Use
-Upload or Take a Photo - Provide an image of an outfit or fashion item
-Chat with StyleGenie - Ask questions like:
-"Can you change the shirt color to blue?"
-"Find me similar outfits under $100"
-"What would go well with this outfit?"
-"Generate a summer outfit for me"
-View Results - Get AI-generated images, shopping links, and fashion advice
-Switch Languages - Use the language selector for French or Spanish
-📁 Project Structure
-stylegenie/
-├── app.py              # Main Streamlit application
-├── style_genie_agent.py    # Core AI agent logic
-├── requirements.txt           # Python dependencies
+The app will open in your default browser at `http://localhost:8501`
+
+### How to Use
+
+1. **Upload or Take a Photo** - Provide an image of an outfit or fashion item
+2. **Chat with StyleGenie** - Ask questions like:
+   - "Can you change the shirt color to blue?"
+   - "Find me similar outfits under $100"
+   - "What would go well with this outfit?"
+   - "Generate a summer outfit for me"
+3. **View Results** - Get AI-generated images, shopping links, and fashion advice
+4. **Switch Languages** - Use the language selector for French or Spanish
+
+## 📁 Project Structure
+
+```
+StyleGenie/
+├── app.py                    # Main Streamlit application
+├── style_genie_agent.py      # Core AI agent logic
+├── requirements.txt          # Python dependencies
 ├── .env.example              # Environment variables template
 ├── .gitignore                # Git ignore rules
 ├── README.md                 # This file
 └── run_streamlit.bat         # Windows launcher script
-🔑 API Keys Setup
-Required APIs:
-Google Gemini: For vision, text generation, and image creation
-Tavily: For web search and shopping results
-Mem0: For user preference memory
-Optional APIs:
-Anthropic Claude: Alternative AI model
-SERP API / Brave Search: Additional search options
-🤝 Contributing
+```
+
+## 🔑 API Keys Setup
+
+### Required APIs:
+- **Google Gemini**: For vision, text generation, and image creation
+- **Tavily**: For web search and shopping results
+- **Mem0**: For user preference memory
+
+### Optional APIs:
+- **Anthropic Claude**: Alternative AI model
+- **SERP API / Brave Search**: Additional search options
+
+## 🤝 Contributing
+
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-📝 License
+## 📝 License
+
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-👨‍💻 Author
-Keynar
+## 👨‍💻 Author
+
+**Keynar**
 
 Made with love ❤️
 
-🙏 Acknowledgments
-Google Gemini for powerful AI capabilities
-Streamlit for the amazing web framework
-All the open-source libraries that made this possible
-📧 Support
+## 🙏 Acknowledgments
+
+- Google Gemini for powerful AI capabilities
+- Streamlit for the amazing web framework
+- All the open-source libraries that made this possible
+
+## 📧 Support
+
 If you have any questions or run into issues, please open an issue on GitHub.
 
-Note: This is a prototype/first application project. Some features may be experimental.
+---
+
+**Note**: This is a prototype/first application project. Some features may be experimental.
 
 
 
