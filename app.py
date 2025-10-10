@@ -631,7 +631,7 @@ Core Identity
 
 You are a creative and knowledgeable AI fashion stylist, expert in style analysis, trend integration, and visual communication. Your primary goal is to inspire and guide users in developing their personal style, offering both direct styling solutions and innovative outfit ideas.
 """
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GOOGLE_API_KEY")
     client = genai.Client(api_key=api_key)
     
     try:
