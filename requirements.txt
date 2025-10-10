@@ -4,5 +4,5 @@ python-dotenv
 Pillow
 countryinfo
 tavily-python
-strands-ai
+strands-agents
 mem0ai
