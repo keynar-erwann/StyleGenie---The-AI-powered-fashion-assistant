@@ -616,8 +616,21 @@ User: "Do you think this outfit suits me?"
 # Initialize genai client (cached to avoid recreation)
 @st.cache_resource
 def get_genai_client():
-    api_key = os.environ.get("GOOGLE_API_KEY")
-    return genai.Client(api_key=api_key)
+    # Try to get API key from Streamlit secrets first, then fall back to environment variable
+    try:
+        api_key = st.secrets.get("GOOGLE_API_KEY", os.environ.get("GOOGLE_API_KEY"))
+    except:
+        api_key = os.environ.get("GOOGLE_API_KEY")
+    
+    if not api_key:
+        raise ValueError("GOOGLE_API_KEY not found in secrets or environment variables")
+    
+    try:
+        client = genai.Client(api_key=api_key)
+        return client
+    except Exception as e:
+        st.error(f"Failed to initialize genai client: {e}")
+        raise
 
 # Tool definitions
 @tool
@@ -701,7 +714,11 @@ def web_search(search: str) -> dict:
     Returns:
         Dictionary with search results including titles, URLs, and content snippets
     """
-    api_key = os.environ.get("TAVILY_API_KEY")
+    try:
+        api_key = st.secrets.get("TAVILY_API_KEY", os.environ.get("TAVILY_API_KEY"))
+    except:
+        api_key = os.environ.get("TAVILY_API_KEY")
+    
     tavily_client = TavilyClient(api_key=api_key)
     
     # Use basic search for faster results
@@ -762,7 +779,11 @@ def add_memories(prompt: str, user_name: str) -> dict:
     Returns:
         The status of the function tool usage
     """
-    memory_api_key = os.environ.get('MEM0_API_KEY')
+    try:
+        memory_api_key = st.secrets.get('MEM0_API_KEY', os.environ.get('MEM0_API_KEY'))
+    except:
+        memory_api_key = os.environ.get('MEM0_API_KEY')
+    
     client = MemoryClient(memory_api_key)
     
     message = {
@@ -789,7 +810,11 @@ def search_memories(prompt: str, user_name: str) -> dict:
     Returns:
         The status of the function tool usage
     """
-    memory_api_key = os.environ.get('MEM0_API_KEY')
+    try:
+        memory_api_key = st.secrets.get('MEM0_API_KEY', os.environ.get('MEM0_API_KEY'))
+    except:
+        memory_api_key = os.environ.get('MEM0_API_KEY')
+    
     client = MemoryClient(memory_api_key)
     
     filters = {
@@ -819,7 +844,11 @@ def get_all_memories(prompt: str, user_name: str) -> dict:
     Returns:
         The status of the function tool usage
     """
-    memory_api_key = os.environ.get('MEM0_API_KEY')
+    try:
+        memory_api_key = st.secrets.get('MEM0_API_KEY', os.environ.get('MEM0_API_KEY'))
+    except:
+        memory_api_key = os.environ.get('MEM0_API_KEY')
+    
     client = MemoryClient(memory_api_key)
     
     filters = {
@@ -840,7 +869,14 @@ def get_all_memories(prompt: str, user_name: str) -> dict:
 # Initialize the agent
 @st.cache_resource
 def initialize_agent():
-    api_key = os.environ.get("GOOGLE_API_KEY")
+    # Try to get API key from Streamlit secrets first, then fall back to environment variable
+    try:
+        api_key = st.secrets.get("GOOGLE_API_KEY", os.environ.get("GOOGLE_API_KEY"))
+    except:
+        api_key = os.environ.get("GOOGLE_API_KEY")
+    
+    if not api_key:
+        raise ValueError("GOOGLE_API_KEY not found in secrets or environment variables")
     
     model = GeminiModel(
         client_args={
