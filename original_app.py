@@ -680,13 +680,10 @@ You are a creative and knowledgeable AI fashion stylist, expert in style analysi
                     for item in part.text:
                         text_response += item
             elif part.inline_data is not None:
-                # Create images directory if it doesn't exist
-                os.makedirs('generated_images', exist_ok=True)
-                
                 # Save the generated image
                 image = Image.open(BytesIO(part.inline_data.data))
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                image_filename = os.path.join('generated_images', f"generated_image_{timestamp}.png")
+                image_filename = f"generated_image_{timestamp}.png"
                 image.save(image_filename)
                 
                 # Store in session state for display
@@ -1077,14 +1074,14 @@ with st.sidebar:
 # Main chat interface
 st.markdown(f"### {get_text('chat_title')}")
 
-    # Display chat messages
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-            
-            # Display images if present
-            if "image" in message and message["image"] and os.path.exists(message["image"]):
-                st.image(message["image"], caption=get_text('generated_image'), width=400, use_column_width='auto')
+# Display chat messages
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+        
+        # Display images if present
+        if "image" in message and message["image"]:
+            st.image(message["image"], caption=get_text('generated_image'), width=True)
 
 # Chat input
 if prompt := st.chat_input(get_text('chat_placeholder')):
@@ -1140,10 +1137,8 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             
             # Check if a new image was generated and display it
             generated_image_path = st.session_state.latest_generated_image
-            if generated_image_path and os.path.exists(generated_image_path):
-                st.image(generated_image_path, caption=get_text('generated_image'), width=400, use_column_width='auto')
-                # Add the image to the message for display in the chat history
-                st.session_state.messages[-1]["image"] = generated_image_path
+            if generated_image_path:
+                st.image(generated_image_path, caption=get_text('generated_image'), width=True)
             
             # Add assistant message to chat (ensure serializable)
             message_to_save = {
