@@ -14,34 +14,9 @@ import base64
 from datetime import datetime
 import json
 import uuid
-import warnings
 
 # Load environment variables
 load_dotenv()
-
-# Suppress the AttributeError warning from google.genai.Client.__del__
-# This is a known issue with google-genai in Python 3.13
-warnings.filterwarnings('ignore', message=".*'Client' object has no attribute '_api_client'.*")
-
-# Global variable to store latest generated image path (workaround for thread context issues)
-_latest_generated_image_path = None
-
-# Monkey patch to fix the genai.Client.__del__ issue
-original_client_del = genai.Client.__del__
-
-def safe_client_del(self):
-    """Safe destructor that handles missing _api_client attribute"""
-    try:
-        if hasattr(self, '_api_client'):
-            original_client_del(self)
-    except AttributeError:
-        # Silently ignore the AttributeError
-        pass
-    except Exception:
-        # Ignore other exceptions during cleanup
-        pass
-
-genai.Client.__del__ = safe_client_del
 
 # Language translations
 TRANSLATIONS = {
@@ -641,7 +616,6 @@ User: "Do you think this outfit suits me?"
 # Initialize genai client (cached to avoid recreation)
 @st.cache_resource
 def get_genai_client():
-    """Initialize and return a Google GenAI client with proper error handling"""
     # Try to get API key from Streamlit secrets first, then fall back to environment variable
     try:
         api_key = st.secrets.get("GOOGLE_API_KEY", os.environ.get("GOOGLE_API_KEY"))
@@ -682,12 +656,14 @@ You are a creative and knowledgeable AI fashion stylist, expert in style analysi
         # Prepare contents with system prompt and user input
         contents = ([system_prompt, prompt], image_path)
         
-        # Use image generation model (gemini-2.5-flash-image-preview for image generation)
+        # Use image generation model with proper config
         response = client.models.generate_content(
-            model="gemini-2.5-flash-image-preview",
+            model="gemini-2.0-flash-exp",
             contents=contents,
             config=types.GenerateContentConfig(
-                response_modalities=['Text', 'Image']
+                response_modalities=['Text', 'Image'],
+                temperature=0.7,
+                max_output_tokens=1024
             )
         )
         
@@ -705,34 +681,18 @@ You are a creative and knowledgeable AI fashion stylist, expert in style analysi
                         text_response += item
             elif part.inline_data is not None:
                 # Save the generated image
-                try:
-                    global _latest_generated_image_path
-                    
-                    image = Image.open(BytesIO(part.inline_data.data))
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    image_filename = f"generated_image_{timestamp}.png"
-                    
-                    # Save to disk
-                    image.save(image_filename)
-                    
-                    # Get absolute path for reliability
-                    abs_path = os.path.abspath(image_filename)
-                    
-                    # Store in global variable (works across threads)
-                    _latest_generated_image_path = abs_path
-                    
-                    # Try to store in session state (may not work in agent thread)
-                    try:
-                        if 'generated_images' not in st.session_state:
-                            st.session_state.generated_images = []
-                        st.session_state.generated_images.append(abs_path)
-                        st.session_state.latest_generated_image = abs_path
-                    except:
-                        pass  # Session state not accessible from agent thread
-                    
-                    image_generated = True
-                except Exception as save_error:
-                    return f"Error saving generated image: {str(save_error)}"
+                image = Image.open(BytesIO(part.inline_data.data))
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                image_filename = f"generated_image_{timestamp}.png"
+                image.save(image_filename)
+                
+                # Store in session state for display
+                if 'generated_images' not in st.session_state:
+                    st.session_state.generated_images = []
+                st.session_state.generated_images.append(image_filename)
+                st.session_state.latest_generated_image = image_filename
+                
+                image_generated = True
         
         if image_generated:
             return f"{text_response}\n\n✨ **Image generated successfully!** Check below to see your new look."
@@ -909,21 +869,7 @@ def get_all_memories(prompt: str, user_name: str) -> dict:
 # Initialize the agent
 @st.cache_resource
 def initialize_agent():
-    # Try to get API key from Streamlit secrets first, then fall back to environment variable
-    try:
-        api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
-    except:
-        api_key = os.environ.get("GEMINI_API_KEY")
-    
-    if not api_key:
-        # Try GOOGLE_API_KEY as fallback
-        try:
-            api_key = st.secrets.get("GOOGLE_API_KEY", os.environ.get("GOOGLE_API_KEY"))
-        except:
-            api_key = os.environ.get("GOOGLE_API_KEY")
-    
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY not found in secrets or environment variables")
+    api_key = os.environ.get("GEMINI_API_KEY")
     
     model = GeminiModel(
         client_args={
@@ -1135,11 +1081,7 @@ for message in st.session_state.messages:
         
         # Display images if present
         if "image" in message and message["image"]:
-            try:
-                if os.path.exists(str(message["image"])):
-                    st.image(message["image"], caption=get_text('generated_image'), use_container_width=True)
-            except Exception as e:
-                pass  # Silently skip if image can't be displayed
+            st.image(message["image"], caption=get_text('generated_image'), width=True)
 
 # Chat input
 if prompt := st.chat_input(get_text('chat_placeholder')):
@@ -1176,9 +1118,7 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             with response_placeholder:
                 st.markdown(f"_{get_text('thinking')}_")
             
-            # Clear previous generated image flags
-            global _latest_generated_image_path
-            _latest_generated_image_path = None
+            # Clear previous generated image flag
             st.session_state.latest_generated_image = None
             
             # Get response from agent (optimized)
@@ -1196,27 +1136,9 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             response_placeholder.markdown(response)
             
             # Check if a new image was generated and display it
-            # Try global variable first (more reliable), then session state
-            generated_image_path = _latest_generated_image_path or st.session_state.get('latest_generated_image', None)
-            
-            # Sync global to session state
-            if _latest_generated_image_path:
-                st.session_state.latest_generated_image = _latest_generated_image_path
-            
-            # Debug: Check if image was generated
+            generated_image_path = st.session_state.latest_generated_image
             if generated_image_path:
-                try:
-                    # Verify file exists before displaying
-                    if os.path.exists(generated_image_path):
-                        st.image(generated_image_path, caption=get_text('generated_image'), use_container_width=True)
-                    else:
-                        st.warning(f"Image file not found: {generated_image_path}")
-                except Exception as img_error:
-                    st.error(f"Error displaying image: {img_error}")
-            else:
-                # Debug: Log when no image is generated
-                if "image generated successfully" in response.lower():
-                    st.warning("Image generation was reported but no file path found.")
+                st.image(generated_image_path, caption=get_text('generated_image'), width=True)
             
             # Add assistant message to chat (ensure serializable)
             message_to_save = {
