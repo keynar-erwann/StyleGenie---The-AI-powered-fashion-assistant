@@ -1,6 +1,8 @@
 import streamlit as st
 from google import genai
 import os
+import glob
+import time
 from dotenv import load_dotenv
 from google.genai import types
 from PIL import Image
@@ -8,6 +10,7 @@ from countryinfo import CountryInfo
 from tavily import TavilyClient
 from strands import Agent, tool
 from strands.models.gemini import GeminiModel
+from strands.agent.conversation_manager import SummarizingConversationManager
 from io import BytesIO
 from mem0 import MemoryClient
 import base64
@@ -465,11 +468,13 @@ Your memory is powered by three tools:
 
 ### 🪪 USER IDENTITY MANAGEMENT
 
-- ALWAYS CHECK if the **user's name** is known before calling memory functions.  
-- IF the name is unknown, ASK ONCE POLITELY in the user's language:  
+- AT THE START of EVERY conversation, call `get_all_memories("user information", "user")` to check for existing memories.
+- IF memories exist, extract the user's name from the stored memories and use "user" as the user_id for all memory operations.
+- IF no memories exist, ask ONCE POLITELY in the user's language:  
   > "To personalize your experience, could you please tell me your name?"  
-- AFTER the user provides it, IMMEDIATELY call `add_memories()` to store it.  
-- REUSE that name for all subsequent memory-related actions.  
+- AFTER the user provides their name, IMMEDIATELY call `add_memories("User's name is [name]", "user")` to store it.  
+- FOR ALL SUBSEQUENT interactions, use "user" as the user_id for all memory functions.
+- CRITICAL: Always use "user" as the user_id for consistency.
 - NEVER ask for the name again unless the user indicates they want to update it.  
 - IF the user declines to share a name, say:  
   > "No problem — I'll continue without saving memories for now,"  
@@ -480,10 +485,15 @@ Your memory is powered by three tools:
 ### 🧭 CORE CAPABILITIES
 
 1. **IDENTITY-PRESERVING IMAGE EDITING**
+   - When the user uploads an image, it is automatically stored in the system.
+   - When the user asks to modify, edit, or change anything about the outfit/clothing:
+     - IMMEDIATELY use the `generate_image` tool with a detailed prompt describing the modification.
+     - The tool will automatically access the stored image from the current context.
+   - KEYWORDS that trigger image generation: "change", "modify", "make", "wear", "put on", "switch", "replace", "different color", "different outfit"
    - MODIFY outfits, colors, or accessories while keeping:
      - FACE, BODY, POSE, HAIRSTYLE, and BACKGROUND unchanged.
-   - USE `generate_image` for the modification.
-   - DESCRIBE edits factually and briefly, no opinions unless asked.
+   - After the image is generated, DESCRIBE the edits factually and briefly.
+   - DO NOT ask the user to upload the image again - it's already stored.
 
 2. **INTELLIGENT SHOPPING ASSISTANT**
    - WHEN asked to find or buy an outfit:
@@ -550,9 +560,12 @@ Your memory is powered by three tools:
 
 | **Intent**             | **Action** |
 |------------------------|------------|
-| New user               | Ask for name → `add_memories(name)` |
-| Known user             | `get_all_memories()` → personalize |
-| Style edit             | `generate_image()` → factual description → optional shopping |
+| Start conversation     | `get_all_memories("user information", "user")` → check for existing memories |
+| New user (no memories) | Ask for name → `add_memories("User's name is [name]", "user")` |
+| Known user (has memories) | Extract name from memories → use "user" as user_id for all operations |
+| Image uploaded         | Image is automatically stored in system |
+| Style edit request     | IMMEDIATELY `generate_image(detailed_prompt)` → factual description → optional shopping |
+| Keywords: "make", "change", "wear", "modify" | Always call `generate_image` tool |
 | Shopping request       | Ask for missing info → `user_country()` → `web_search()` |
 | Opinion request        | Give friendly, concise opinion |
 | Personalization        | Retrieve via `search_memories()` |
@@ -588,9 +601,11 @@ Your memory is powered by three tools:
 ### 💡 FEW-SHOT EXAMPLES
 
 **Example 1 – Image Editing**  
+User: *uploads image*  
+System: Image stored automatically.  
 User: "Change my jacket to a white leather one."  
-→ `get_all_memories()` (recall preferences)  
-→ `generate_image`  
+→ `get_all_memories()` (recall preferences if available)  
+→ `generate_image("Change the jacket to a fitted white leather jacket while preserving the person's face, body, pose, hairstyle, and background")`  
 → "Updated Look: The jacket was changed to a fitted white leather design while preserving your pose and background."
 
 **Example 2 – Shopping**  
@@ -634,75 +649,109 @@ def get_genai_client():
 
 # Tool definitions
 @tool
-def generate_image(prompt: str, image_path: str) -> str:
-    """
+def generate_image(prompt: str) -> str:
+    """" 
     This function allows you to generate an image based on the user's query.
-    
-    Args:
-        prompt: the user's query
-        image_path: the image path
-    
-    Returns:
-        Your response with image path
-    """
-    system_prompt = """AI Fashion Stylist System Prompt
-Core Identity
+    It modifies the current image that the user uploaded while preserving their identity.
 
-You are a creative and knowledgeable AI fashion stylist, expert in style analysis, trend integration, and visual communication. Your primary goal is to inspire and guide users in developing their personal style, offering both direct styling solutions and innovative outfit ideas.
-"""
-    client = get_genai_client()
+    Args :
+
+    prompt : the user's modification request (e.g., "change the jacket to white leather")
+
+    Returns :
+
+    Status message indicating success or failure
+    
+    """
+    global current_image_bytes
+    
+    if current_image_bytes is None:
+        return "Error: No image available to modify. Please upload an image first."
+
+    system_prompt = """You are an AI image editor specializing in outfit modifications. 
+When modifying clothing in images, you must:
+- Change ONLY the requested clothing items, colors, or accessories
+- Preserve the person's face, body, pose, hairstyle, and background exactly as they are
+- Keep all other elements of the image unchanged
+- Generate realistic and natural-looking results
+- The input image shows the person whose outfit you need to modify"""
     
     try:
-        # Prepare contents with system prompt and user input
-        contents = ([system_prompt, prompt], image_path)
+        api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
+    except:
+        api_key = os.environ.get("GEMINI_API_KEY")
+    
+    if not api_key:
+        return "Error: GEMINI_API_KEY not found in environment variables or secrets."
+    
+    try:
+        client = genai.Client(api_key=api_key)
         
-        # Use image generation model with proper config
-        response = client.models.generate_content(
-            model="gemini-2.0-flash-exp",
-            contents=contents,
-            config=types.GenerateContentConfig(
-                response_modalities=['Text', 'Image'],
-                temperature=0.7,
-                max_output_tokens=1024
-            )
+        # Get image bytes from global variable
+        image_bytes = current_image_bytes
+        
+        # Create the image part from bytes
+        image_part = types.Part.from_bytes(
+            data=image_bytes,
+            mime_type="image/jpeg"
         )
         
-        text_response = ""
-        image_generated = False
+        # Send both the original image and the modification prompt
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-image-preview",
+            contents=[image_part, prompt],
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                response_modalities=['Text', 'Image']
+            )
+        )
+
+        # Process response
+        full_response = ""
+        generated_image = None
         
-        # Unpack response
-        for part in response.candidates[0].content.parts:
-            if part.text is not None:
-                # Handle text response (could be string or iterable)
-                if isinstance(part.text, str):
-                    text_response += part.text
-                else:
-                    for item in part.text:
-                        text_response += item
-            elif part.inline_data is not None:
-                # Create images directory if it doesn't exist
-                os.makedirs('generated_images', exist_ok=True)
-                
-                # Save the generated image
-                image = Image.open(BytesIO(part.inline_data.data))
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                image_filename = os.path.join('generated_images', f"generated_image_{timestamp}.png")
-                image.save(image_filename)
-                
-                # Store in session state for display
-                if 'generated_images' not in st.session_state:
-                    st.session_state.generated_images = []
-                st.session_state.generated_images.append(image_filename)
-                st.session_state.latest_generated_image = image_filename
-                
-                image_generated = True
+        try:
+            for part in response.candidates[0].content.parts:
+                if part.text is not None:
+                    full_response += part.text
+                elif part.inline_data is not None:
+                    generated_image = Image.open(BytesIO(part.inline_data.data))
+                    
+                    # Convert image to bytes for display in chat
+                    img_byte_arr = BytesIO()
+                    generated_image.save(img_byte_arr, format='PNG')
+                    image_bytes = img_byte_arr.getvalue()
+                    
+                    # Store image bytes in global variable and session state
+                    update_generated_image(image_bytes)
+                    
+                    try:
+                        if hasattr(st, 'session_state'):
+                            if 'generated_images' not in st.session_state:
+                                st.session_state.generated_images = []
+                            st.session_state.generated_images.append(image_bytes)
+                            st.session_state.latest_generated_image = image_bytes
+                            print(f"Image stored in session state: {len(image_bytes)} bytes")
+                        else:
+                            print("No session state available in tool context")
+                    except Exception as e:
+                        print(f"Error storing image in session state: {e}")
+                        pass
+                    
+                    print("Image generated successfully and stored in memory")
+        except Exception as ex:
+            full_response = f"ERROR in image generation: {str(ex)}"
+            generated_image = None
         
-        if image_generated:
-            return f"{text_response}\n\n✨ **Image generated successfully!** Check below to see your new look."
+        if generated_image is not None:
+            return "Image successfully modified and saved. The person's identity and pose have been preserved."
         else:
-            return text_response if text_response else "Image generation completed, but no image was returned."
-            
+            return full_response if full_response else "Image modification completed but no image was generated in the response."
+    
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error in generate_image: {error_details}")
         return f"Error generating image: {str(e)}"
 
 
@@ -787,6 +836,10 @@ def add_memories(prompt: str, user_name: str) -> dict:
     except:
         memory_api_key = os.environ.get('MEM0_API_KEY')
     
+    if not memory_api_key:
+        print("ERROR: MEM0_API_KEY not found in environment variables or secrets")
+        return {"status": "error", "message": "MEM0_API_KEY not found"}
+    
     client = MemoryClient(memory_api_key)
     
     message = {
@@ -796,8 +849,10 @@ def add_memories(prompt: str, user_name: str) -> dict:
     
     try:
         client.add([message], user_id=user_name)
+        print(f"Memory added successfully for user: {user_name}")
         return {"status": "success"}
     except Exception as e:
+        print(f"Error adding memory for user {user_name}: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 
@@ -830,8 +885,10 @@ def search_memories(prompt: str, user_name: str) -> dict:
     
     try:
         results = client.search(prompt, version="v2", filters=filters)
+        print(f"Memory search successful for user: {user_name}, found {len(results) if results else 0} results")
         return {"status": "success", "results": results}
     except Exception as e:
+        print(f"Error searching memories for user {user_name}: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 
@@ -864,13 +921,14 @@ def get_all_memories(prompt: str, user_name: str) -> dict:
     
     try:
         all_memories = client.get_all(version="v2", filters=filters, page=1, page_size=50)
+        print(f"Retrieved {len(all_memories) if all_memories else 0} memories for user: {user_name}")
         return {"status": "success", "memories": all_memories}
     except Exception as e:
+        print(f"Error getting all memories for user {user_name}: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 
-# Initialize the agent
-@st.cache_resource
+# Initialize the agent (removed caching to allow tools to access current session state)
 def initialize_agent():
     api_key = os.environ.get("GEMINI_API_KEY")
     
@@ -878,17 +936,32 @@ def initialize_agent():
         client_args={
             'api_key': api_key,
         },
-        model_id="gemini-2.0-flash-exp",  # Faster experimental model
+        model_id="gemini-2.5-flash",
     )
     
     agent = Agent(
         model=model,
         tools=[generate_image, user_country, web_search, get_all_memories, search_memories, add_memories],
         system_prompt=style_genie_system_prompt,
+        conversation_manager=SummarizingConversationManager()
     )
     
     return agent
 
+
+# Global variables to store images
+current_image_bytes = None
+latest_generated_image_bytes = None
+
+def update_current_image(image_bytes):
+    """Updates the global current_image_bytes variable."""
+    global current_image_bytes
+    current_image_bytes = image_bytes
+
+def update_generated_image(image_bytes):
+    """Updates the global latest_generated_image_bytes variable."""
+    global latest_generated_image_bytes
+    latest_generated_image_bytes = image_bytes
 
 # Initialize session state
 if "conversations" not in st.session_state:
@@ -922,11 +995,14 @@ if "generated_images" not in st.session_state:
 if "latest_generated_image" not in st.session_state:
     st.session_state.latest_generated_image = None
 
-if "agent" not in st.session_state:
-    st.session_state.agent = initialize_agent()
+# Initialize agent fresh each time to ensure tools have access to current session state
+st.session_state.agent = initialize_agent()
 
 if "language" not in st.session_state:
     st.session_state.language = "English"
+
+if "current_image_bytes" not in st.session_state:
+    st.session_state.current_image_bytes = None
 
 
 # Language selector at the top
@@ -1041,8 +1117,17 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             st.image(image, caption=get_text('uploaded_image'), width=True)
             
-            # Save the image temporarily
+            # Save the image temporarily and store bytes
             image.save("temp_uploaded_image.jpg")
+            
+            # Convert image to bytes for the agent
+            img_byte_arr = BytesIO()
+            image.save(img_byte_arr, format='JPEG')
+            image_bytes = img_byte_arr.getvalue()
+            st.session_state.current_image_bytes = image_bytes
+            
+            # Update global variable for the tool
+            update_current_image(image_bytes)
     
     else:  # Camera input
         camera_photo = st.camera_input(get_text('take_photo_btn'))
@@ -1052,8 +1137,17 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             st.image(image, caption=get_text('captured_image'), width=True)
             
-            # Save the image temporarily
+            # Save the image temporarily and store bytes
             image.save("temp_uploaded_image.jpg")
+            
+            # Convert image to bytes for the agent
+            img_byte_arr = BytesIO()
+            image.save(img_byte_arr, format='JPEG')
+            image_bytes = img_byte_arr.getvalue()
+            st.session_state.current_image_bytes = image_bytes
+            
+            # Update global variable for the tool
+            update_current_image(image_bytes)
     
     st.markdown("---")
     
@@ -1077,14 +1171,22 @@ with st.sidebar:
 # Main chat interface
 st.markdown(f"### {get_text('chat_title')}")
 
-    # Display chat messages
+# Display chat messages
 for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-            
-            # Display images if present
-            if "image" in message and message["image"] and os.path.exists(message["image"]):
-                st.image(message["image"], caption=get_text('generated_image'), width=400, use_column_width='auto')
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+        
+        # Display images if present
+        if "image" in message and message["image"]:
+            # Handle both base64 encoded images and image bytes
+            if isinstance(message["image"], str):
+                # Base64 encoded image from saved conversation
+                import base64
+                image_bytes = base64.b64decode(message["image"])
+                st.image(image_bytes, caption=get_text('generated_image'), width=True)
+            elif isinstance(message["image"], bytes):
+                # Direct image bytes
+                st.image(message["image"], caption=get_text('generated_image'), width=True)
 
 # Chat input
 if prompt := st.chat_input(get_text('chat_placeholder')):
@@ -1121,8 +1223,9 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             with response_placeholder:
                 st.markdown(f"_{get_text('thinking')}_")
             
-            # Clear previous generated image flag
+            # Clear previous generated image flag and record timestamp
             st.session_state.latest_generated_image = None
+            request_start_time = time.time()
             
             # Get response from agent (optimized)
             agent_response = st.session_state.agent(agent_input)
@@ -1139,17 +1242,20 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             response_placeholder.markdown(response)
             
             # Check if a new image was generated and display it
-            generated_image_path = st.session_state.latest_generated_image
-            if generated_image_path and os.path.exists(generated_image_path):
-                st.image(generated_image_path, caption=get_text('generated_image'), width=400, use_column_width='auto')
-                # Add the image to the message for display in the chat history
-                st.session_state.messages[-1]["image"] = generated_image_path
+            # Try global variable first, then session state
+            generated_image_bytes = latest_generated_image_bytes or st.session_state.get('latest_generated_image', None)
+            
+            if generated_image_bytes and isinstance(generated_image_bytes, bytes):
+                print(f"Displaying generated image: {len(generated_image_bytes)} bytes")
+                st.image(generated_image_bytes, caption=get_text('generated_image'), width="stretch")
+            else:
+                print(f"No image to display. Global: {latest_generated_image_bytes is not None}, Session: {st.session_state.get('latest_generated_image', None) is not None}")
             
             # Add assistant message to chat (ensure serializable)
             message_to_save = {
                 "role": "assistant",
                 "content": response,
-                "image": generated_image_path
+                "image": generated_image_bytes if generated_image_bytes and isinstance(generated_image_bytes, bytes) else None
             }
             st.session_state.messages.append(message_to_save)
             
@@ -1163,7 +1269,12 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
                         "content": str(msg.get("content", "")),
                     }
                     if "image" in msg and msg["image"]:
-                        clean_msg["image"] = str(msg["image"])
+                        # Convert image bytes to base64 for JSON serialization
+                        if isinstance(msg["image"], bytes):
+                            import base64
+                            clean_msg["image"] = base64.b64encode(msg["image"]).decode('utf-8')
+                        else:
+                            clean_msg["image"] = str(msg["image"])
                     serializable_messages.append(clean_msg)
                 
                 st.session_state.conversations[st.session_state.current_conversation_id]['messages'] = serializable_messages
