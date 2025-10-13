@@ -1,8 +1,11 @@
+
 streamlit
-google-genai
+google-generativeai
 python-dotenv
 Pillow
-countryinfo
-tavily-python
 strands-agents
-mem0ai
+mem0-py
+tavily-python
+google-search-results
+countryinfo
+pydantic

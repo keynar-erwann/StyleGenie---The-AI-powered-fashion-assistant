@@ -171,20 +171,28 @@ def get_text(key):
     return TRANSLATIONS[lang].get(key, TRANSLATIONS['English'][key])
 
 # Conversation management functions
-def load_conversations():
-    """Load conversations from JSON file"""
-    if os.path.exists('conversations.json'):
+def get_user_conversations_file(user_id):
+    """Get the conversation file path for a specific user"""
+    # Create a conversations directory if it doesn't exist
+    os.makedirs('conversations', exist_ok=True)
+    return f'conversations/user_{user_id}.json'
+
+def load_conversations(user_id):
+    """Load conversations from user-specific JSON file"""
+    filepath = get_user_conversations_file(user_id)
+    if os.path.exists(filepath):
         try:
-            with open('conversations.json', 'r', encoding='utf-8') as f:
+            with open(filepath, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except:
             return {}
     return {}
 
-def save_conversations(conversations):
-    """Save conversations to JSON file"""
+def save_conversations(conversations, user_id):
+    """Save conversations to user-specific JSON file"""
     try:
-        with open('conversations.json', 'w', encoding='utf-8') as f:
+        filepath = get_user_conversations_file(user_id)
+        with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(conversations, f, ensure_ascii=False, indent=2)
     except Exception as e:
         st.error(f"Error saving conversations: {e}")
@@ -468,13 +476,13 @@ Your memory is powered by three tools:
 
 ### 🪪 USER IDENTITY MANAGEMENT
 
-- AT THE START of EVERY conversation, call `get_all_memories("user information", "user")` to check for existing memories.
-- IF memories exist, extract the user's name from the stored memories and use "user" as the user_id for all memory operations.
+- AT THE START of EVERY conversation, call `get_all_memories("user information", "{USER_ID}")` to check for existing memories.
+- IF memories exist, extract the user's name from the stored memories and use `"{USER_ID}"` as the user_id for all memory operations.
 - IF no memories exist, ask ONCE POLITELY in the user's language:  
   > "To personalize your experience, could you please tell me your name?"  
-- AFTER the user provides their name, IMMEDIATELY call `add_memories("User's name is [name]", "user")` to store it.  
-- FOR ALL SUBSEQUENT interactions, use "user" as the user_id for all memory functions.
-- CRITICAL: Always use "user" as the user_id for consistency.
+- AFTER the user provides their name, IMMEDIATELY call `add_memories("User's name is [name]", "{USER_ID}")` to store it.  
+- FOR ALL SUBSEQUENT interactions, use `"{USER_ID}"` as the user_id for all memory functions.
+- CRITICAL: Always use `"{USER_ID}"` for consistency. This ensures each browser session has isolated memories.
 - NEVER ask for the name again unless the user indicates they want to update it.  
 - IF the user declines to share a name, say:  
   > "No problem — I'll continue without saving memories for now,"  
@@ -560,9 +568,9 @@ Your memory is powered by three tools:
 
 | **Intent**             | **Action** |
 |------------------------|------------|
-| Start conversation     | `get_all_memories("user information", "user")` → check for existing memories |
-| New user (no memories) | Ask for name → `add_memories("User's name is [name]", "user")` |
-| Known user (has memories) | Extract name from memories → use "user" as user_id for all operations |
+| Start conversation     | `get_all_memories("user information", "{USER_ID}")` → check for existing memories |
+| New user (no memories) | Ask for name → `add_memories("User's name is [name]", "{USER_ID}")` |
+| Known user (has memories) | Extract name from memories → use `"{USER_ID}"` for all operations |
 | Image uploaded         | Image is automatically stored in system |
 | Style edit request     | IMMEDIATELY `generate_image(detailed_prompt)` → factual description → optional shopping |
 | Keywords: "make", "change", "wear", "modify" | Always call `generate_image` tool |
@@ -929,8 +937,12 @@ def get_all_memories(prompt: str, user_name: str) -> dict:
 
 
 # Initialize the agent (removed caching to allow tools to access current session state)
-def initialize_agent():
+def initialize_agent(user_id):
+    """Initialize agent with user-specific system prompt"""
     api_key = os.environ.get("GEMINI_API_KEY")
+    
+    # Inject the actual user_id into the system prompt
+    personalized_prompt = style_genie_system_prompt.replace("{USER_ID}", user_id)
     
     model = GeminiModel(
         client_args={
@@ -942,7 +954,7 @@ def initialize_agent():
     agent = Agent(
         model=model,
         tools=[generate_image, user_country, web_search, get_all_memories, search_memories, add_memories],
-        system_prompt=style_genie_system_prompt,
+        system_prompt=personalized_prompt,
         conversation_manager=SummarizingConversationManager()
     )
     
@@ -964,8 +976,13 @@ def update_generated_image(image_bytes):
     latest_generated_image_bytes = image_bytes
 
 # Initialize session state
+# Generate unique user ID for this session to isolate memories per user
+if "user_id" not in st.session_state:
+    st.session_state.user_id = str(uuid.uuid4())
+    print(f"New user session created with ID: {st.session_state.user_id}")
+
 if "conversations" not in st.session_state:
-    st.session_state.conversations = load_conversations()
+    st.session_state.conversations = load_conversations(st.session_state.user_id)
 
 if "current_conversation_id" not in st.session_state:
     # Create first conversation if none exist
@@ -973,7 +990,7 @@ if "current_conversation_id" not in st.session_state:
         new_conv = create_new_conversation()
         st.session_state.conversations[new_conv['id']] = new_conv
         st.session_state.current_conversation_id = new_conv['id']
-        save_conversations(st.session_state.conversations)
+        save_conversations(st.session_state.conversations, st.session_state.user_id)
     else:
         # Load the most recent conversation
         st.session_state.current_conversation_id = list(st.session_state.conversations.keys())[-1]
@@ -996,7 +1013,7 @@ if "latest_generated_image" not in st.session_state:
     st.session_state.latest_generated_image = None
 
 # Initialize agent fresh each time to ensure tools have access to current session state
-st.session_state.agent = initialize_agent()
+st.session_state.agent = initialize_agent(st.session_state.user_id)
 
 if "language" not in st.session_state:
     st.session_state.language = "English"
@@ -1039,7 +1056,7 @@ with st.sidebar:
         st.session_state.messages = []
         st.session_state.uploaded_image = None
         st.session_state.generated_images = []
-        save_conversations(st.session_state.conversations)
+        save_conversations(st.session_state.conversations, st.session_state.user_id)
         st.rerun()
     
     st.markdown("---")
@@ -1080,7 +1097,7 @@ with st.sidebar:
                 if st.button("🗑️", key=f"del_{conv_id}", help=get_text('delete_chat')):
                     if len(st.session_state.conversations) > 1:
                         del st.session_state.conversations[conv_id]
-                        save_conversations(st.session_state.conversations)
+                        save_conversations(st.session_state.conversations, st.session_state.user_id)
                         
                         # Switch to another conversation if current was deleted
                         if conv_id == st.session_state.current_conversation_id:
@@ -1157,7 +1174,7 @@ with st.sidebar:
         if st.session_state.current_conversation_id in st.session_state.conversations:
             st.session_state.conversations[st.session_state.current_conversation_id]['messages'] = []
             st.session_state.conversations[st.session_state.current_conversation_id]['updated_at'] = datetime.now().strftime("%Y-%m-%d %H:%M")
-            save_conversations(st.session_state.conversations)
+            save_conversations(st.session_state.conversations, st.session_state.user_id)
         
         st.session_state.messages = []
         st.session_state.uploaded_image = None
@@ -1279,7 +1296,7 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
                 
                 st.session_state.conversations[st.session_state.current_conversation_id]['messages'] = serializable_messages
                 st.session_state.conversations[st.session_state.current_conversation_id]['updated_at'] = datetime.now().strftime("%Y-%m-%d %H:%M")
-                save_conversations(st.session_state.conversations)
+                save_conversations(st.session_state.conversations, st.session_state.user_id)
             
         except Exception as e:
             error_message = f"{get_text('error')} {str(e)}"
