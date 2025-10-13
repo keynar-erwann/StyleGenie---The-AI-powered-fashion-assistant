@@ -4,7 +4,7 @@ google-generativeai
 python-dotenv
 Pillow
 strands-agents
-mem0
+mem0ai
 tavily-python
 google-search-results
 countryinfo
