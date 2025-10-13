@@ -16,7 +16,61 @@ from mem0 import MemoryClient
 import base64
 from datetime import datetime
 import json
+import sqlite3
 import uuid
+
+# Database setup
+DB_PATH = 'data.db'  # SQLite file path; can be adjusted for cloud deployments
+
+def init_db():
+    """Initialize the database and create tables if they don't exist."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Table for users (to manage sessions)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Table for conversations (chat history per user)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            conversation_id TEXT NOT NULL,
+            title TEXT,
+            messages TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (user_id)
+        )
+    ''')
+    
+    # Table for memories (to integrate with mem0)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS memories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            memory_data TEXT,  
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (user_id)
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+# Initialize DB on app start
+init_db()
+
+# Helper function to get DB connection
+def get_db_connection():
+    """Get a database connection."""
+    return sqlite3.connect(DB_PATH)
 
 # Load environment variables
 load_dotenv()
@@ -170,32 +224,80 @@ def get_text(key):
     lang = st.session_state.get('language', 'English')
     return TRANSLATIONS[lang].get(key, TRANSLATIONS['English'][key])
 
-# Conversation management functions
-def get_user_conversations_file(user_id):
-    """Get the conversation file path for a specific user"""
-    # Create a conversations directory if it doesn't exist
-    os.makedirs('conversations', exist_ok=True)
-    return f'conversations/user_{user_id}.json'
+# Conversation management functions (Database-based)
+def ensure_user_exists(user_id):
+    """Ensure a user record exists in the database"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (user_id,))
+    conn.commit()
+    conn.close()
 
 def load_conversations(user_id):
-    """Load conversations from user-specific JSON file"""
-    filepath = get_user_conversations_file(user_id)
-    if os.path.exists(filepath):
+    """Load conversations from database for a specific user"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Ensure user exists
+    ensure_user_exists(user_id)
+    
+    # Load conversations
+    cursor.execute('''
+        SELECT conversation_id, title, messages, created_at, updated_at
+        FROM conversations
+        WHERE user_id = ?
+        ORDER BY updated_at DESC
+    ''', (user_id,))
+    
+    rows = cursor.fetchall()
+    conversations = {}
+    
+    for row in rows:
+        conv_id, title, messages_json, created_at, updated_at = row
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            return {}
-    return {}
+            messages = json.loads(messages_json) if messages_json else []
+        except json.JSONDecodeError:
+            messages = []
+        
+        conversations[conv_id] = {
+            'id': conv_id,
+            'title': title or f"{get_text('conversation_title')} - {created_at}",
+            'messages': messages,
+            'created_at': created_at,
+            'updated_at': updated_at
+        }
+    
+    conn.close()
+    return conversations
 
 def save_conversations(conversations, user_id):
-    """Save conversations to user-specific JSON file"""
-    try:
-        filepath = get_user_conversations_file(user_id)
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(conversations, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        st.error(f"Error saving conversations: {e}")
+    """Save conversations to database for a specific user"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Ensure user exists
+    ensure_user_exists(user_id)
+    
+    # Delete existing conversations for this user
+    cursor.execute('DELETE FROM conversations WHERE user_id = ?', (user_id,))
+    
+    # Insert updated conversations
+    for conv_id, conv_data in conversations.items():
+        messages_json = json.dumps(conv_data.get('messages', []), ensure_ascii=False)
+        cursor.execute('''
+            INSERT INTO conversations (user_id, conversation_id, title, messages, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            user_id,
+            conv_id,
+            conv_data.get('title', ''),
+            messages_json,
+            conv_data.get('created_at', datetime.now().strftime("%Y-%m-%d %H:%M")),
+            conv_data.get('updated_at', datetime.now().strftime("%Y-%m-%d %H:%M"))
+        ))
+    
+    conn.commit()
+    conn.close()
 
 def create_new_conversation():
     """Create a new conversation"""
@@ -208,6 +310,26 @@ def create_new_conversation():
         'created_at': timestamp,
         'updated_at': timestamp
     }
+
+def delete_conversation(user_id, conversation_id):
+    """Delete a specific conversation from the database"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM conversations WHERE user_id = ? AND conversation_id = ?', (user_id, conversation_id))
+    conn.commit()
+    conn.close()
+
+def update_conversation_title(user_id, conversation_id, new_title):
+    """Update the title of a conversation"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE conversations
+        SET title = ?, updated_at = ?
+        WHERE user_id = ? AND conversation_id = ?
+    ''', (new_title, datetime.now().strftime("%Y-%m-%d %H:%M"), user_id, conversation_id))
+    conn.commit()
+    conn.close()
 
 def get_conversation_preview(messages, max_length=50):
     """Get a preview of the conversation from first user message"""
