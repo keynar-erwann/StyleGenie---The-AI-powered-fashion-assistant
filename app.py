@@ -344,221 +344,594 @@ st.set_page_config(
     page_title="StyleGenie: Your Personal Fashion Assistant",
     page_icon="✨",
     layout="wide",
-    initial_sidebar_state="auto"  # Auto-collapse on mobile
+    initial_sidebar_state="collapsed"  # Start collapsed for better mobile experience
 )
 
-# Custom CSS for beautiful UI with mobile-first design
+# Custom CSS for enhanced mobile-first design
 st.markdown("""
 <style>
-    /* Mobile-first: Base styles for mobile */
+    /* Import Inter font for better readability */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
-    /* Main container styling */
+    /* Global variables for consistent theming */
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --primary-color: #667eea;
+        --secondary-color: #764ba2;
+        --text-color: #2c3e50;
+        --white: #ffffff;
+        --shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.2);
+        --border-radius: 12px;
+        --border-radius-lg: 20px;
+        --touch-target: 48px;
+        --spacing-xs: 0.5rem;
+        --spacing-sm: 1rem;
+        --spacing-md: 1.5rem;
+        --spacing-lg: 2rem;
+        --spacing-xl: 3rem;
+    }
+    
+    /* Base styles - Mobile First */
+    * {
+        box-sizing: border-box;
+    }
+    
+    html {
+        font-size: 16px;
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+    }
+    
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* Main container - Enhanced mobile design */
     .main {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 0.5rem;
+        background: var(--primary-gradient);
+        padding: var(--spacing-xs);
+        min-height: 100vh;
     }
     
-    /* Chat container - optimized for mobile */
+    /* Enhanced chat container */
     .stChatMessage {
-        background-color: rgba(255, 255, 255, 0.95);
-        border-radius: 15px;
-        padding: 12px;
-        margin: 8px 0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        font-size: 0.95rem;
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: var(--border-radius);
+        padding: var(--spacing-sm);
+        margin: var(--spacing-xs) 0;
+        box-shadow: var(--shadow);
+        font-size: 0.9rem;
+        line-height: 1.5;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
     }
     
-    /* Header styling - mobile optimized */
+    .stChatMessage:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-1px);
+    }
+    
+    /* Modern header design */
     .header-container {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem 1rem;
-        border-radius: 15px;
+        background: var(--primary-gradient);
+        padding: var(--spacing-md) var(--spacing-sm);
+        border-radius: var(--border-radius);
         text-align: center;
-        margin-bottom: 1rem;
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        margin-bottom: var(--spacing-sm);
+        box-shadow: var(--shadow-hover);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .header-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+        pointer-events: none;
     }
     
     .header-title {
-        color: white;
-        font-size: 2rem;
-        font-weight: bold;
+        color: var(--white);
+        font-size: 1.8rem;
+        font-weight: 700;
         margin: 0;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+        letter-spacing: -0.02em;
     }
     
     .header-subtitle {
         color: rgba(255, 255, 255, 0.9);
-        font-size: 0.95rem;
-        margin-top: 0.5rem;
+        font-size: 0.9rem;
+        margin-top: var(--spacing-xs);
+        font-weight: 400;
     }
     
-    /* Footer styling - mobile optimized */
+    /* Enhanced footer */
     .footer {
         position: fixed;
         bottom: 0;
         left: 0;
-        width: 100%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        right: 0;
+        background: var(--primary-gradient);
+        color: var(--white);
         text-align: center;
-        padding: 0.75rem;
-        font-size: 0.85rem;
-        box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
-        z-index: 999;
+        padding: var(--spacing-sm);
+        font-size: 0.8rem;
+        font-weight: 500;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        backdrop-filter: blur(10px);
     }
     
-    /* Sidebar styling */
-    .css-1d391kg {
-        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    /* Enhanced sidebar */
+    [data-testid="stSidebar"] {
+        background: var(--primary-gradient) !important;
     }
     
-    /* Button styling - larger touch targets for mobile */
-    .stButton>button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 0.75rem 1.5rem;
-        font-weight: bold;
-        transition: all 0.3s ease;
-        min-height: 44px; /* iOS recommended touch target */
+    [data-testid="stSidebar"] .css-1d391kg {
+        background: transparent;
+    }
+    
+    /* Modern button design */
+    .stButton > button {
+        background: var(--primary-gradient) !important;
+        color: var(--white) !important;
+        border: none !important;
+        border-radius: var(--border-radius) !important;
+        padding: 0.75rem 1.5rem !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        min-height: var(--touch-target) !important;
+        width: 100% !important;
+        box-shadow: var(--shadow) !important;
+        text-transform: none !important;
+        letter-spacing: 0.02em !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+    
+    .stButton > button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
         width: 100%;
-        font-size: 1rem;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
     }
     
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: var(--shadow-hover) !important;
     }
     
-    .stButton>button:active {
-        transform: translateY(0);
+    .stButton > button:hover::before {
+        left: 100%;
     }
     
-    /* File uploader styling - mobile friendly */
-    .uploadedFile {
-        border-radius: 10px;
-        border: 2px dashed #667eea;
+    .stButton > button:active {
+        transform: translateY(0) !important;
     }
     
-    /* Chat input styling - mobile optimized */
+    /* Enhanced file uploader */
+    .stFileUploader {
+        border-radius: var(--border-radius);
+        overflow: hidden;
+    }
+    
+    .stFileUploader > div {
+        border-radius: var(--border-radius) !important;
+        border: 2px dashed var(--primary-color) !important;
+        background: rgba(255, 255, 255, 0.8) !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .stFileUploader > div:hover {
+        border-color: var(--secondary-color) !important;
+        background: rgba(255, 255, 255, 0.9) !important;
+    }
+    
+    .stFileUploader > div > button {
+        min-height: var(--touch-target) !important;
+        font-size: 16px !important;
+        border-radius: var(--border-radius) !important;
+    }
+    
+    /* Chat input enhancements */
     .stChatInputContainer {
-        border-radius: 15px;
-        margin-bottom: 4rem;
+        border-radius: var(--border-radius) !important;
+        margin-bottom: 5rem !important;
+        box-shadow: var(--shadow) !important;
+        overflow: hidden;
     }
     
-    .stChatInput>div>div>textarea {
-        font-size: 16px !important; /* Prevents zoom on iOS */
-        min-height: 44px;
+    .stChatInput > div > div > textarea {
+        font-size: 16px !important;
+        min-height: var(--touch-target) !important;
+        border-radius: var(--border-radius) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(10px) !important;
+        padding: 12px 16px !important;
+        line-height: 1.4 !important;
+        resize: none !important;
     }
     
-    /* Image display styling - responsive */
+    .stChatInput > div > div > textarea:focus {
+        outline: none !important;
+        box-shadow: 0 0 0 2px var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
+    }
+    
+    /* Enhanced image display */
     .uploaded-image {
-        border-radius: 15px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
         max-width: 100%;
         height: auto;
-        margin: 1rem 0;
+        margin: var(--spacing-sm) 0;
+        transition: transform 0.3s ease;
     }
     
-    /* Radio buttons - larger touch targets */
+    .uploaded-image:hover {
+        transform: scale(1.02);
+    }
+    
+    /* Improved radio buttons */
     .stRadio > div {
-        gap: 0.75rem;
+        gap: var(--spacing-sm);
     }
     
     .stRadio > div > label {
-        padding: 0.75rem;
-        min-height: 44px;
-        display: flex;
-        align-items: center;
+        padding: var(--spacing-sm) !important;
+        min-height: var(--touch-target) !important;
+        display: flex !important;
+        align-items: center !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-radius: var(--border-radius) !important;
+        transition: all 0.3s ease !important;
+        cursor: pointer !important;
+        font-weight: 500 !important;
+        color: var(--white) !important;
     }
     
-    /* Select box - mobile friendly */
+    .stRadio > div > label:hover {
+        background: rgba(255, 255, 255, 0.2) !important;
+        transform: translateY(-1px);
+    }
+    
+    /* Enhanced select boxes */
     .stSelectbox > div > div {
-        font-size: 16px !important; /* Prevents zoom on iOS */
+        font-size: 16px !important;
+        border-radius: var(--border-radius) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(10px) !important;
     }
     
-    /* File uploader - larger touch area */
-    .stFileUploader > div > button {
-        min-height: 44px;
-        font-size: 16px;
-    }
-    
-    /* Camera input - mobile optimized */
+    /* Camera input improvements */
     button[kind="header"] {
-        min-height: 44px;
+        min-height: var(--touch-target) !important;
+        border-radius: var(--border-radius) !important;
     }
     
-    /* Responsive images in chat */
+    /* Chat message images */
     .stChatMessage img {
         max-width: 100%;
         height: auto;
-        border-radius: 10px;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        margin: var(--spacing-xs) 0;
     }
     
-    /* Tablet and Desktop: Media queries for larger screens */
+    /* Language selector enhancement */
+    .language-selector {
+        margin-bottom: var(--spacing-md);
+    }
+    
+    /* Conversation list improvements */
+    [data-testid="stSidebar"] .stMarkdown h3 {
+        color: var(--white) !important;
+        font-weight: 600 !important;
+        font-size: 1.1rem !important;
+        margin-bottom: var(--spacing-sm) !important;
+    }
+    
+    /* Loading indicator */
+    .stSpinner {
+        border-color: var(--primary-color) transparent var(--primary-color) transparent !important;
+    }
+    
+    /* Tablet and Desktop Optimizations */
     @media (min-width: 768px) {
         .main {
-            padding: 1rem;
+            padding: var(--spacing-sm);
         }
         
         .header-title {
-            font-size: 3rem;
+            font-size: 2.5rem;
         }
         
         .header-subtitle {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
         }
         
         .header-container {
-            padding: 2rem;
-            border-radius: 20px;
-            margin-bottom: 2rem;
+            padding: var(--spacing-lg) var(--spacing-xl);
+            border-radius: var(--border-radius-lg);
+            margin-bottom: var(--spacing-lg);
         }
         
         .stChatMessage {
-            padding: 15px;
-            margin: 10px 0;
+            padding: var(--spacing-md);
+            margin: var(--spacing-sm) 0;
             font-size: 1rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
         }
         
         .footer {
-            padding: 1rem;
-            font-size: 1rem;
+            padding: var(--spacing-md);
+            font-size: 0.9rem;
         }
         
-        .stButton>button {
-            width: auto;
-            padding: 0.5rem 2rem;
+        .stButton > button {
+            width: auto !important;
+            padding: 0.75rem 2rem !important;
+            min-width: 120px !important;
+        }
+        
+        .stChatInputContainer {
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
         }
     }
     
     /* Large Desktop */
     @media (min-width: 1200px) {
         .header-title {
-            font-size: 3.5rem;
+            font-size: 3rem;
+        }
+        
+        .header-container {
+            padding: var(--spacing-xl);
+        }
+        
+        .main {
+            padding: var(--spacing-md);
         }
     }
     
-    /* Improve touch scrolling on mobile */
+    /* Ultra-wide screens */
+    @media (min-width: 1600px) {
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+    }
+    
+    /* Enhanced touch interactions */
     .main, .stChatMessageContainer {
         -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
     }
     
-    /* Prevent text selection on buttons (better mobile UX) */
-    button {
-        -webkit-tap-highlight-color: transparent;
-        user-select: none;
+    /* Remove tap highlights and improve button UX */
+    button, .stButton > button {
+        -webkit-tap-highlight-color: transparent !important;
+        user-select: none !important;
+        -webkit-touch-callout: none !important;
     }
     
-    /* Optimize sidebar for mobile */
+    /* Mobile sidebar optimization */
     @media (max-width: 768px) {
         [data-testid="stSidebar"] {
-            width: 100% !important;
+            width: 85% !important;
+            max-width: 320px !important;
         }
         
         [data-testid="stSidebar"][aria-expanded="false"] {
-            margin-left: -100%;
+            transform: translateX(-100%) !important;
+        }
+        
+        [data-testid="stSidebar"][aria-expanded="true"] {
+            transform: translateX(0) !important;
+        }
+        
+        /* Overlay for mobile sidebar */
+        [data-testid="stSidebar"][aria-expanded="true"]::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: -1;
+            backdrop-filter: blur(2px);
+        }
+    }
+    
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+        .stChatMessage {
+            background: rgba(45, 45, 45, 0.95);
+            color: #ffffff;
+        }
+    }
+    
+    /* Accessibility improvements */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+    
+    /* Focus indicators */
+    *:focus {
+        outline: 2px solid var(--primary-color) !important;
+        outline-offset: 2px !important;
+    }
+    
+    /* High contrast mode support */
+    @media (prefers-contrast: high) {
+        .stButton > button {
+            border: 2px solid var(--white) !important;
+        }
+        
+        .stChatMessage {
+            border: 1px solid var(--text-color) !important;
+        }
+    }
+    
+    /* Additional mobile-specific enhancements */
+    .sidebar-header h3 {
+        color: var(--white) !important;
+        font-weight: 600 !important;
+        font-size: 1.1rem !important;
+        margin: 0 !important;
+        padding: var(--spacing-xs) 0 !important;
+    }
+    
+    .sidebar-section h3 {
+        color: var(--white) !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        margin: 0 !important;
+        padding: var(--spacing-xs) 0 !important;
+    }
+    
+    .sidebar-divider {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.2);
+        margin: var(--spacing-sm) 0;
+        border-radius: 1px;
+    }
+    
+    .upload-instruction {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-size: 0.85rem !important;
+        margin: var(--spacing-xs) 0 !important;
+        line-height: 1.4 !important;
+    }
+    
+    .conversation-spacer {
+        height: var(--spacing-xs);
+    }
+    
+    .image-container {
+        margin: var(--spacing-sm) 0;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        box-shadow: var(--shadow);
+    }
+    
+    .image-container img {
+        border-radius: var(--border-radius) !important;
+        transition: transform 0.3s ease !important;
+    }
+    
+    .image-container:hover img {
+        transform: scale(1.02);
+    }
+    
+    .tips-content {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-size: 0.85rem !important;
+        line-height: 1.5 !important;
+        white-space: pre-line;
+    }
+    
+    /* Enhanced expander styling */
+    .streamlit-expanderHeader {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-radius: var(--border-radius) !important;
+        padding: var(--spacing-sm) !important;
+        font-weight: 600 !important;
+        color: var(--white) !important;
+    }
+    
+    .streamlit-expanderContent {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-radius: 0 0 var(--border-radius) var(--border-radius) !important;
+        padding: var(--spacing-sm) !important;
+    }
+    
+    /* Mobile chat optimization */
+    @media (max-width: 768px) {
+        .stChatInputContainer {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 999 !important;
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px) !important;
+            padding: var(--spacing-sm) !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15) !important;
+        }
+        
+        .main .block-container {
+            padding-bottom: 6rem !important;
+        }
+        
+        .footer {
+            display: none;
+        }
+        
+        .language-selector {
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .header-container {
+            margin-bottom: var(--spacing-sm);
+            border-radius: var(--border-radius);
+        }
+    }
+    
+    /* Improved mobile scrolling */
+    @media (max-width: 768px) {
+        [data-testid="stSidebar"] .element-container {
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        .main {
+            padding-bottom: 0;
+        }
+        
+        .stChatMessage {
+            margin: var(--spacing-xs) var(--spacing-xs);
+            font-size: 0.9rem;
+        }
+    }
+    
+    /* Tablet optimizations */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .header-title {
+            font-size: 2.2rem;
+        }
+        
+        .stChatMessage {
+            max-width: 90%;
+            margin-left: auto;
+            margin-right: auto;
         }
     }
 </style>
@@ -567,13 +940,16 @@ st.markdown("""
 # System prompt
 style_genie_system_prompt = """<system_prompt>
 
-👔 **STYLE GENIE — MULTILINGUAL AI FASHION EXPERT, MEMORY-AWARE IMAGE STYLIST & SHOPPING FINDER**
+👔 **STYLE GENIE — MULTILINGUAL AI FASHION EXPERT, PROACTIVE STYLIST & SHOPPING FINDER**
 
-YOU ARE **STYLE GENIE**, THE WORLD'S MOST ADVANCED MULTILINGUAL AI FASHION ASSISTANT.  
-YOU SPECIALIZE IN STYLE ANALYSIS, IDENTITY-PRESERVING IMAGE EDITING, GLOBAL OUTFIT DISCOVERY, AND LONG-TERM USER MEMORY MANAGEMENT.
+YOU ARE **STYLE GENIE**, THE WORLD'S MOST ADVANCED MULTILINGUAL AI FASHION ASSISTANT. YOU ARE AN **ENTHUSIASTIC, KNOWLEDGEABLE, AND FRIENDLY STYLIST**. You specialize in style analysis, identity-preserving image editing, global outfit discovery, and long-term user memory management.
 
-YOUR CORE PURPOSE IS TO HELP USERS VISUALIZE, MODIFY, AND SOURCE OUTFITS ACCURATELY AND SAFELY —  
-WHILE PRESERVING THEIR IDENTITY, RESPECTING THEIR LANGUAGE, AND REMEMBERING THEIR PREFERENCES OVER TIME.
+---
+
+### 🎨 TONE & PERSONA
+
+- **TONE & PERSONA:** You are an **enthusiastic, expert, and friendly stylist**. Use contractions (e.g., "I'm," "you'll") and an encouraging, helpful voice. Your replies should feel like chatting with a knowledgeable, trusted friend in fashion.
+- **CORE PURPOSE:** Your goal is to help users visualize, modify, and source outfits accurately and safely, acting as a creative partner who can offer fresh, personalized ideas.
 
 ---
 
@@ -581,17 +957,17 @@ WHILE PRESERVING THEIR IDENTITY, RESPECTING THEIR LANGUAGE, AND REMEMBERING THEI
 
 Your memory is powered by three tools:
 
-- **`add_memories(prompt, user_name)`** → STORE relevant user information (style preferences, favorite colors, brands, budget, etc.).  
-- **`search_memories(prompt, user_name)`** → RECALL previous interactions or fashion preferences.  
+- **`add_memories(prompt, user_name)`** → STORE relevant user information (style preferences, favorite colors, brands, budget, etc.).
+- **`search_memories(prompt, user_name)`** → RECALL specific previous interactions or fashion preferences.
 - **`get_all_memories(prompt, user_name)`** → RETRIEVE all user memories to provide personalized context.
 
 #### 🧩 MEMORY BEHAVIOR RULES
 
-1. **ADD MEMORIES** whenever the user shares new information about themselves or their tastes.  
-2. **SEARCH MEMORIES** when the user references past discussions (e.g., "Do you remember what I liked last time?").  
-3. **GET ALL MEMORIES** when generating any new suggestion or styling advice to personalize the output.  
-4. **REFER POLITELY** to stored context (e.g., "Last time, you mentioned liking minimalist neutral tones.").  
-5. **NEVER expose or print raw memory data** — always summarize naturally.  
+1. **ADD MEMORIES** whenever the user shares new information about themselves or their tastes.
+2. **SEARCH MEMORIES** when the user references past discussions (e.g., "Do you remember what I liked last time?").
+3. **GET ALL MEMORIES** when generating any new suggestion or styling advice to personalize the output.
+4. **REFER POLITELY** to stored context (e.g., "Since you mentioned liking minimalist neutral tones, I focused on that palette.").
+5. **NEVER expose or print raw memory data** — always summarize naturally.
 6. **ONLY store factual user-approved data**, never assumptions.
 
 ---
@@ -600,14 +976,12 @@ Your memory is powered by three tools:
 
 - AT THE START of EVERY conversation, call `get_all_memories("user information", "{USER_ID}")` to check for existing memories.
 - IF memories exist, extract the user's name from the stored memories and use `"{USER_ID}"` as the user_id for all memory operations.
-- IF no memories exist, ask ONCE POLITELY in the user's language:  
-  > "To personalize your experience, could you please tell me your name?"  
-- AFTER the user provides their name, IMMEDIATELY call `add_memories("User's name is [name]", "{USER_ID}")` to store it.  
-- FOR ALL SUBSEQUENT interactions, use `"{USER_ID}"` as the user_id for all memory functions.
+- IF no memories exist, ask ONCE POLITELY in the user's language:
+  > "To personalize your experience, could you please tell me your name?"
+- AFTER the user provides their name, IMMEDIATELY call `add_memories("User's name is [name]", "{USER_ID}")` to store it.
 - CRITICAL: Always use `"{USER_ID}"` for consistency. This ensures each browser session has isolated memories.
-- NEVER ask for the name again unless the user indicates they want to update it.  
-- IF the user declines to share a name, say:  
-  > "No problem — I'll continue without saving memories for now,"  
+- IF the user declines to share a name, say:
+  > "No worries! I'll continue without saving preferences for now,"
   and temporarily skip all memory-related actions.
 
 ---
@@ -617,141 +991,103 @@ Your memory is powered by three tools:
 1. **IDENTITY-PRESERVING IMAGE EDITING**
    - When the user uploads an image, it is automatically stored in the system.
    - When the user asks to modify, edit, or change anything about the outfit/clothing:
-     - IMMEDIATELY use the `generate_image` tool with a detailed prompt describing the modification.
+     - **IMMEDIATELY** use the `generate_image` tool with a detailed prompt describing the modification.
      - The tool will automatically access the stored image from the current context.
-   - KEYWORDS that trigger image generation: "change", "modify", "make", "wear", "put on", "switch", "replace", "different color", "different outfit"
-   - MODIFY outfits, colors, or accessories while keeping:
-     - FACE, BODY, POSE, HAIRSTYLE, and BACKGROUND unchanged.
+   - KEYWORDS that trigger image generation: "change", "modify", "make", "wear", "put on", "switch", "replace", "different color", "different outfit".
+   - **CRITICAL:** MODIFY outfits, colors, or accessories while keeping: FACE, BODY, POSE, HAIRSTYLE, and BACKGROUND unchanged.
    - After the image is generated, DESCRIBE the edits factually and briefly.
-   - DO NOT ask the user to upload the image again - it's already stored.
 
-2. **INTELLIGENT SHOPPING ASSISTANT**
+2. **PROACTIVE STYLING & SUGGESTIONS (The Stylist's Role)**
+   - **User Requests Opinion/Suggestion (e.g., "What should I wear?", "Do you like it?"):**
+     - You must offer a personalized suggestion based on the user's photo and memories.
+     - **IMMEDIATELY** use the `generate_image` tool with a detailed prompt for your suggested outfit.
+   - **After a User Edit is Completed (Proactive Suggestion):**
+     - You may offer **one** unsolicited, personalized suggestion *after* successfully completing the user's primary edit request.
+     - Frame it as: "That looks great! If you're open to a fresh idea, I have a thought on a slightly different silhouette that would also look amazing..."
+     - If you make a suggestion, **IMMEDIATELY** use the `generate_image` tool.
+
+3. **INTELLIGENT SHOPPING ASSISTANT**
    - WHEN asked to find or buy an outfit:
      - IF **budget or country** is missing, ask once:
        > "To help you best, could you please tell me your budget and which country you are in?"
        (Translate automatically to the user's language)
-     - WAIT for their response before continuing.
+     - **WAIT** for their response before continuing.
    - USE `user_country(country_name)` to retrieve localized data.
    - IDENTIFY each visible clothing item (type, color, style).
    - BUILD search query:
      `[item type] [color] [style keywords] [country] buy OR acheter [retailer]`
    - EXECUTE `web_search(query)` → return only verified URLs.
-   - IF no results found:
-       > "I couldn't find good results, I'll try different keywords."
+   - IF no results found: "I couldn't find good results, I'll try different keywords or retailers."
 
-   **POPULAR RETAILERS BY REGION**
-   - France: Zalando, Asos, Zara.fr, H&M.fr, Shein  
-   - Spain: Zara.es, Mango, Zalando, Asos  
-   - Germany: Zalando.de, About You, Asos  
-   - UK/US: Asos, Zara, H&M, Amazon, Nordstrom  
+   **POPULAR RETAILERS BY REGION (Use these keywords in search queries when local results are needed):**
+   - France: Zalando, Asos, Zara.fr, H&M.fr, Shein
+   - Spain: Zara.es, Mango, Zalando, Asos
+   - Germany: Zalando.de, About You, Asos
+   - UK/US: Asos, Zara, H&M, Amazon, Nordstrom
 
 ---
 
 ### 🌐 MULTILINGUAL BEHAVIOR RULES
 
-- DETECT and RESPOND automatically in the SAME LANGUAGE as the latest user message.  
-- NEVER switch languages unless explicitly requested.  
-- MAINTAIN a friendly, polite, and professional tone at all times.  
-- ENSURE consistency in formatting, politeness, and translation accuracy.
+- DETECT and RESPOND automatically in the **SAME LANGUAGE** as the latest user message.
+- NEVER switch languages unless explicitly requested.
+- MAINTAIN the friendly, enthusiastic, and professional tone at all times.
 
 ---
 
 ### 🖼️ RESPONSE FORMATS
 
-#### 🔹 IF AN IMAGE WAS GENERATED
+#### 🔹 IF A USER-REQUESTED IMAGE EDIT WAS GENERATED
 **Updated Look:** [Brief, neutral description of visual changes]
 
+#### 🔹 IF A STYLIST SUGGESTION IMAGE WAS GENERATED
+**StyleGenie Suggestion:** [Enthusiastic explanation of the suggested look and why it works for them, referencing memory if possible.]
+
 #### 🔹 IF SHOPPING RESULTS WERE FOUND
-**Outfit Details:** [List main items]  
-**Shopping Options:**  
-- **Product:** [Exact title]  
-- **Price:** [Price, if found]  
-- **Link:** [Verified URL only]  
-- **Retailer:** [Domain]  
+**Outfit Details:** [List main items]
+**Shopping Options:**
+- **Product:** [Exact title]
+- **Price:** [Price, if found]
+- **Link:** [Verified URL only]
+- **Retailer:** [Domain]
 
-**Budget Summary:**  
-- **Estimated Total:** [Sum of prices]  
+**Budget Summary:**
+- **Estimated Total:** [Sum of prices]
 - **Remaining:** [Budget - total]
-
----
-
-### 💬 COMMUNICATION & INTERACTION PROTOCOL
-
-- GIVE style opinions ONLY when the user explicitly asks (e.g., "Do you like it?").  
-- ASK for missing information only once, then wait.  
-- ASK neutral clarifying questions if the user is uncertain.  
-- NEVER fabricate URLs or modify a person's physical features.  
-- PRESENT search results progressively, not all at once.  
-- USE memories to personalize replies naturally.
 
 ---
 
 ### ⚙️ WORKFLOW SUMMARY
 
-| **Intent**             | **Action** |
-|------------------------|------------|
-| Start conversation     | `get_all_memories("user information", "{USER_ID}")` → check for existing memories |
-| New user (no memories) | Ask for name → `add_memories("User's name is [name]", "{USER_ID}")` |
-| Known user (has memories) | Extract name from memories → use `"{USER_ID}"` for all operations |
-| Image uploaded         | Image is automatically stored in system |
-| Style edit request     | IMMEDIATELY `generate_image(detailed_prompt)` → factual description → optional shopping |
-| Keywords: "make", "change", "wear", "modify" | Always call `generate_image` tool |
-| Shopping request       | Ask for missing info → `user_country()` → `web_search()` |
-| Opinion request        | Give friendly, concise opinion |
-| Personalization        | Retrieve via `search_memories()` |
-| New preference shared  | `add_memories()` to update context |
-| User unsure            | Ask polite clarifying question |
+| **Intent** | **Action** |
+| :--- | :--- |
+| Start conversation | `get_all_memories("user information", "{USER_ID}")` → check for existing memories |
+| New user (no memories) | Ask for name → store with `add_memories()` |
+| **User Style Edit Request** | **IMMEDIATELY** `generate_image(detailed_prompt)` → factual description → **Optional Suggestion** |
+| **User Opinion/Suggestion Request** | `search_memories()` → **IMMEDIATELY** `generate_image(suggestion prompt)` → explain idea |
+| Shopping request | Ask for missing info (country, budget) → `user_country()` → `web_search()` |
+| New preference shared | `add_memories()` to update context |
 
 ---
 
 ### 🧩 CHAIN OF THOUGHT PROCESS
 
-1. **UNDERSTAND:** Identify if the user's intent is styling, shopping, opinion, or memory-related.  
-2. **BASICS:** Extract garments, preferences, or missing data.  
-3. **BREAK DOWN:** Plan which tools to use (memory, image, or search).  
-4. **ANALYZE:** If memory exists, recall it to guide personalization.  
-5. **BUILD:** Generate image, find items, or craft a personalized reply.  
-6. **EDGE CASES:** Handle missing name, missing info, or empty search gracefully.  
-7. **FINAL ANSWER:** Present output clearly, in the user's language, using proper format and tone.
+1. **UNDERSTAND:** Identify the user's primary intent (styling, shopping, opinion, memory).
+2. **BASICS:** Extract garments, preferences, or missing data (country, budget).
+3. **ANALYZE:** Retrieve memory (`get_all_memories()` or `search_memories()`) to personalize the approach.
+4. **EXECUTE PRIMARY TASK:** Call the necessary tool(s) (`generate_image`, `web_search`, etc.).
+5. **PROACTIVE STYLING CHECK:** If an edit was just completed OR an opinion was asked for, formulate and execute **one** visual suggestion using `generate_image()`.
+6. **FINAL ANSWER:** Present all output clearly, in the user's language, using the proper format and enthusiastic tone.
 
 ---
 
 ### 🚫 WHAT NOT TO DO
 
-- ❌ NEVER alter physical identity or environment in images.  
-- ❌ NEVER invent URLs, brands, or prices.  
-- ❌ NEVER guess the user's name or preferences — always confirm.  
-- ❌ NEVER show or expose raw memory data.  
-- ❌ NEVER mix personal opinions with factual results unless asked.  
-- ❌ NEVER ignore user's language.  
-- ❌ NEVER delete or overwrite memories unless the user requests it.
-
----
-
-### 💡 FEW-SHOT EXAMPLES
-
-**Example 1 – Image Editing**  
-User: *uploads image*  
-System: Image stored automatically.  
-User: "Change my jacket to a white leather one."  
-→ `get_all_memories()` (recall preferences if available)  
-→ `generate_image("Change the jacket to a fitted white leather jacket while preserving the person's face, body, pose, hairstyle, and background")`  
-→ "Updated Look: The jacket was changed to a fitted white leather design while preserving your pose and background."
-
-**Example 2 – Shopping**  
-User: "Find this jacket for me."  
-→ If name unknown: ask for name → store with `add_memories()`  
-→ If budget or country missing: ask politely once.  
-→ Then `web_search()` → return structured results.
-
-**Example 3 – Memory Recall**  
-User: "What outfit did I like last time?"  
-→ `search_memories()` → summarize response politely.  
-→ "Last time, you mentioned loving the black minimalist outfit with beige accents."
-
-**Example 4 – Opinion Request**  
-User: "Do you think this outfit suits me?"  
-→ "Yes, it aligns perfectly with your previous preferences for neutral tones and elegant simplicity."
+- ❌ NEVER alter physical identity or environment in images.
+- ❌ NEVER invent URLs, brands, or prices.
+- ❌ NEVER guess the user's name or preferences — always confirm.
+- ❌ NEVER show or expose raw memory data.
+- ❌ NEVER ignore the user's language.
 
 ---
 
@@ -1144,18 +1480,22 @@ if "current_image_bytes" not in st.session_state:
     st.session_state.current_image_bytes = None
 
 
-# Language selector at the top
-col1, col2, col3 = st.columns([2, 1, 2])
-with col2:
-    selected_language = st.selectbox(
-        get_text("language_selector"),
-        ["English", "Français", "Español", "Deutsch"],
-        index=["English", "Français", "Español", "Deutsch"].index(st.session_state.language),
-        key="language_select"
-    )
-    if selected_language != st.session_state.language:
-        st.session_state.language = selected_language
-        st.rerun()
+# Language selector at the top with better mobile layout
+with st.container():
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown('<div class="language-selector">', unsafe_allow_html=True)
+        selected_language = st.selectbox(
+            get_text("language_selector"),
+            ["English", "Français", "Español", "Deutsch"],
+            index=["English", "Français", "Español", "Deutsch"].index(st.session_state.language),
+            key="language_select",
+            label_visibility="visible"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+        if selected_language != st.session_state.language:
+            st.session_state.language = selected_language
+            st.rerun()
 
 # Header
 st.markdown(f"""
@@ -1165,13 +1505,13 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar
+# Enhanced Sidebar with mobile-optimized layout
 with st.sidebar:
-    # Conversations section
-    st.markdown(f"### {get_text('conversations')}")
+    # Mobile-friendly header
+    st.markdown(f'<div class="sidebar-header"><h3>{get_text("conversations")}</h3></div>', unsafe_allow_html=True)
     
-    # New chat button
-    if st.button(get_text('new_chat'), width=True, type="primary"):
+    # New chat button with better mobile styling
+    if st.button(get_text('new_chat'), use_container_width=True, type="primary"):
         new_conv = create_new_conversation()
         st.session_state.conversations[new_conv['id']] = new_conv
         st.session_state.current_conversation_id = new_conv['id']
@@ -1181,7 +1521,7 @@ with st.sidebar:
         save_conversations(st.session_state.conversations, st.session_state.user_id)
         st.rerun()
     
-    st.markdown("---")
+    st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
     
     # Display conversations list
     if st.session_state.conversations:
@@ -1193,56 +1533,69 @@ with st.sidebar:
         )
         
         for conv_id, conv in sorted_convs:
-            col1, col2 = st.columns([4, 1])
-            
-            with col1:
-                # Get conversation preview
-                preview = get_conversation_preview(conv.get('messages', []))
+            # Mobile-optimized conversation item
+            with st.container():
+                col1, col2 = st.columns([5, 1], gap="small")
                 
-                # Highlight current conversation
-                is_current = conv_id == st.session_state.current_conversation_id
-                button_type = "primary" if is_current else "secondary"
-                
-                if st.button(
-                    f"{'🔵 ' if is_current else ''}{preview}",
-                    key=f"conv_{conv_id}",
-                    width=True,
-                    disabled=is_current
-                ):
-                    # Switch to this conversation
-                    st.session_state.current_conversation_id = conv_id
-                    st.session_state.messages = conv.get('messages', [])
-                    st.rerun()
-            
-            with col2:
-                # Delete button
-                if st.button("🗑️", key=f"del_{conv_id}", help=get_text('delete_chat')):
-                    if len(st.session_state.conversations) > 1:
-                        del st.session_state.conversations[conv_id]
-                        save_conversations(st.session_state.conversations, st.session_state.user_id)
-                        
-                        # Switch to another conversation if current was deleted
-                        if conv_id == st.session_state.current_conversation_id:
-                            new_current = list(st.session_state.conversations.keys())[0]
-                            st.session_state.current_conversation_id = new_current
-                            st.session_state.messages = st.session_state.conversations[new_current].get('messages', [])
-                        
+                with col1:
+                    # Get conversation preview
+                    preview = get_conversation_preview(conv.get('messages', []))
+                    
+                    # Highlight current conversation
+                    is_current = conv_id == st.session_state.current_conversation_id
+                    
+                    # Better mobile button styling
+                    button_style = "primary" if is_current else "secondary"
+                    button_label = f"{'🔵 ' if is_current else '💬 '}{preview}"
+                    
+                    if st.button(
+                        button_label,
+                        key=f"conv_{conv_id}",
+                        use_container_width=True,
+                        disabled=is_current,
+                        type=button_style
+                    ):
+                        # Switch to this conversation
+                        st.session_state.current_conversation_id = conv_id
+                        st.session_state.messages = conv.get('messages', [])
                         st.rerun()
-                    else:
-                        st.warning("Cannot delete the last conversation!")
+                
+                with col2:
+                    # Mobile-friendly delete button
+                    if st.button("🗑️", key=f"del_{conv_id}", help=get_text('delete_chat'), use_container_width=True):
+                        if len(st.session_state.conversations) > 1:
+                            del st.session_state.conversations[conv_id]
+                            save_conversations(st.session_state.conversations, st.session_state.user_id)
+                            
+                            # Switch to another conversation if current was deleted
+                            if conv_id == st.session_state.current_conversation_id:
+                                new_current = list(st.session_state.conversations.keys())[0]
+                                st.session_state.current_conversation_id = new_current
+                                st.session_state.messages = st.session_state.conversations[new_current].get('messages', [])
+                            
+                            st.rerun()
+                        else:
+                            st.warning("Cannot delete the last conversation!")
+                
+                # Add spacing between conversations for better mobile UX
+                st.markdown('<div class="conversation-spacer"></div>', unsafe_allow_html=True)
     else:
         st.info(get_text('no_conversations'))
     
-    st.markdown("---")
-    st.markdown(f"### {get_text('upload_section')}")
-    st.markdown(get_text('upload_instruction'))
+    st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
     
-    # Image upload options
-    upload_option = st.radio(
-        get_text('select_input'),
-        [get_text('upload_from_device'), get_text('take_photo')],
-        label_visibility="collapsed"
-    )
+    # Enhanced upload section with better mobile styling
+    with st.container():
+        st.markdown(f'<div class="sidebar-section"><h3>{get_text("upload_section")}</h3></div>', unsafe_allow_html=True)
+        st.markdown(f'<p class="upload-instruction">{get_text("upload_instruction")}</p>', unsafe_allow_html=True)
+        
+        # Image upload options with better mobile layout
+        upload_option = st.radio(
+            get_text('select_input'),
+            [get_text('upload_from_device'), get_text('take_photo')],
+            label_visibility="collapsed",
+            horizontal=False
+        )
     
     if upload_option == get_text('upload_from_device'):
         uploaded_file = st.file_uploader(
@@ -1254,7 +1607,10 @@ with st.sidebar:
         if uploaded_file is not None:
             image = Image.open(uploaded_file)
             st.session_state.uploaded_image = image
-            st.image(image, caption=get_text('uploaded_image'), width=True)
+            with st.container():
+                st.markdown('<div class="image-container">', unsafe_allow_html=True)
+                st.image(image, caption=get_text('uploaded_image'), use_column_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
             image.save("temp_uploaded_image.jpg")
@@ -1274,7 +1630,10 @@ with st.sidebar:
         if camera_photo is not None:
             image = Image.open(camera_photo)
             st.session_state.uploaded_image = image
-            st.image(image, caption=get_text('captured_image'), width=True)
+            with st.container():
+                st.markdown('<div class="image-container">', unsafe_allow_html=True)
+                st.image(image, caption=get_text('captured_image'), use_column_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
             image.save("temp_uploaded_image.jpg")
@@ -1288,10 +1647,10 @@ with st.sidebar:
             # Update global variable for the tool
             update_current_image(image_bytes)
     
-    st.markdown("---")
+    st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
     
-    # Clear current chat button
-    if st.button(get_text('clear_chat'), width=True):
+    # Enhanced clear chat button
+    if st.button(get_text('clear_chat'), use_container_width=True, type="secondary"):
         # Clear messages in current conversation
         if st.session_state.current_conversation_id in st.session_state.conversations:
             st.session_state.conversations[st.session_state.current_conversation_id]['messages'] = []
@@ -1303,9 +1662,11 @@ with st.sidebar:
         st.session_state.generated_image = None
         st.rerun()
     
-    st.markdown("---")
-    st.markdown(f"### {get_text('tips_title')}")
-    st.markdown(get_text('tips_content'))
+    st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
+    
+    # Enhanced tips section
+    with st.expander(get_text('tips_title'), expanded=False):
+        st.markdown(f'<div class="tips-content">{get_text("tips_content")}</div>', unsafe_allow_html=True)
 
 # Main chat interface
 st.markdown(f"### {get_text('chat_title')}")
