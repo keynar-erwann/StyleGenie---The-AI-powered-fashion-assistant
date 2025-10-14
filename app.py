@@ -1007,7 +1007,7 @@ Your memory is powered by three tools:
      - If you make a suggestion, **IMMEDIATELY** use the `generate_image` tool.
 
 3. **INTELLIGENT SHOPPING ASSISTANT**
-   - IF the user asks to find or buy an outfit ALWAYS DO THE FOLLOWING:
+   - WHEN asked to find or buy an outfit:
      - IF **budget or country** is missing, ask once:
        > "To help you best, could you please tell me your budget and which country you are in?"
        (Translate automatically to the user's language)
@@ -1372,18 +1372,8 @@ def get_all_memories(prompt: str, user_name: str) -> dict:
     """
     try:
         memory_api_key = st.secrets.get('MEM0_API_KEY', os.environ.get('MEM0_API_KEY'))
-        # Debug: Print masked key for troubleshooting
-        masked_key = memory_api_key[:4] + '****' if memory_api_key and len(memory_api_key) > 4 else 'None'
-        print(f"Using MEM0 API key: {masked_key}")
-    except Exception as e:
-        print(f"Error accessing st.secrets, falling back to os.environ: {e}")
+    except:
         memory_api_key = os.environ.get('MEM0_API_KEY')
-        masked_key = memory_api_key[:4] + '****' if memory_api_key and len(memory_api_key) > 4 else 'None'
-        print(f"Fallback MEM0 API key: {masked_key}")
-    
-    if not memory_api_key:
-        print("MEM0_API_KEY not found in environment or secrets")
-        return {"status": "error", "message": "MEM0_API_KEY not found"}
     
     client = MemoryClient(memory_api_key)
     
@@ -1619,7 +1609,7 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             with st.container():
                 st.markdown('<div class="image-container">', unsafe_allow_html=True)
-                st.image(image, caption=get_text('uploaded_image'), use_container_width=True)
+                st.image(image, caption=get_text('uploaded_image'), use_column_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
@@ -1642,7 +1632,7 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             with st.container():
                 st.markdown('<div class="image-container">', unsafe_allow_html=True)
-                st.image(image, caption=get_text('captured_image'), use_container_width=True)
+                st.image(image, caption=get_text('captured_image'), use_column_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
@@ -1712,21 +1702,8 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
         response_placeholder = st.empty()
         
         try:
-            # Retrieve all memories for context (call this explicitly for reliability)
-            try:
-                memories_response = get_all_memories("user information", st.session_state.user_id)
-                if memories_response.get("status") == "success" and memories_response.get("memories"):
-                    # Summarize or include key memories in context (avoid exposing raw data)
-                    memories_summary = "\n".join([f"- {mem.get('memory', 'N/A')}" for mem in memories_response["memories"][:5]])  # Limit to top 5 for brevity
-                    context_prompt = f"Previous context from user:\n{memories_summary}\n\nCurrent query: {prompt}"
-                else:
-                    context_prompt = prompt
-            except Exception as mem_error:
-                print(f"Memory retrieval failed: {mem_error}")
-                context_prompt = prompt
-            
-            # Prepare the input for the agent with context
-            agent_input = [{"text": context_prompt}]
+            # Prepare the input for the agent
+            agent_input = [{"text": prompt}]
             
             # Add image if available
             if st.session_state.uploaded_image is not None:
@@ -1750,7 +1727,7 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             st.session_state.latest_generated_image = None
             request_start_time = time.time()
             
-            # Get response from agent (now with explicit memory context)
+            # Get response from agent (optimized)
             agent_response = st.session_state.agent(agent_input)
             
             # Convert AgentResult to string if needed
