@@ -4,7 +4,7 @@ import os
 import glob
 import time
 from dotenv import load_dotenv
-from google.genai import types
+from google.genai import types  
 from PIL import Image
 from countryinfo import CountryInfo
 from tavily import TavilyClient
@@ -16,244 +16,43 @@ from mem0 import MemoryClient
 import base64
 from datetime import datetime
 import json
-import sqlite3
-import uuid
-
 # Database setup
-DB_PATH = 'data.db'  # SQLite file path; can be adjusted for cloud deployments
+# conn = st.connection('pets_db', type='sql')
+conn = st.connection('style_db', type='sql')
 
 def init_db():
     """Initialize the database and create tables if they don't exist."""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    # Table for users (to manage sessions)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT UNIQUE NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Table for conversations (chat history per user)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS conversations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            conversation_id TEXT NOT NULL,
-            title TEXT,
-            messages TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (user_id)
-        )
-    ''')
-    
-    # Table for memories (to integrate with mem0)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS memories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            memory_data TEXT,  
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (user_id)
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
+    with conn.session as s:
+        s.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT UNIQUE NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);')
+        s.execute('CREATE TABLE IF NOT EXISTS conversations (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, conversation_id TEXT NOT NULL, title TEXT, messages TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users (user_id));')
+        s.execute('CREATE TABLE IF NOT EXISTS memories (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, memory_data TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users (user_id));')
+        s.commit()
+
 
 # Initialize DB on app start
 init_db()
 
-# Helper function to get DB connection
-def get_db_connection():
-    """Get a database connection."""
-    return sqlite3.connect(DB_PATH)
-
-# Load environment variables
-load_dotenv()
-
-# Language translations
-TRANSLATIONS = {
-    "English": {
-        "page_title": "StyleGenie: Your Personal Fashion Assistant",
-        "header_title": "✨ StyleGenie",
-        "header_subtitle": "Your Personal Fashion Assistant",
-        "footer": "Made with love ❤️ by Keynar",
-        "upload_section": "📸 Upload Your Image",
-        "upload_instruction": "Choose how you'd like to provide your outfit image:",
-        "upload_from_device": "📁 Upload from device",
-        "take_photo": "📷 Take a photo",
-        "choose_image": "Choose an image...",
-        "upload_help": "Upload a photo of your outfit or any fashion item",
-        "uploaded_image": "Uploaded Image",
-        "captured_image": "Captured Image",
-        "take_photo_btn": "Take a photo",
-        "clear_chat": "🗑️ Clear Chat History",
-        "tips_title": "💡 Tips",
-        "tips_content": """- Upload or take a photo of your outfit
-- Ask me to modify colors, styles, or accessories
-- Request shopping links for similar items
-- I remember your preferences!""",
-        "chat_title": "💬 Chat with StyleGenie",
-        "chat_placeholder": "Ask me anything about fashion... ✨",
-        "thinking": "✨ StyleGenie is thinking...",
-        "error": "❌ Oops! Something went wrong:",
-        "generated_image": "Generated Image",
-        "language_selector": "🌐 Language / Langue / Idioma",
-        "select_input": "Select input method:",
-        "conversations": "💬 Conversations",
-        "new_chat": "➕ New Chat",
-        "delete_chat": "🗑️ Delete",
-        "rename_chat": "✏️ Rename",
-        "no_conversations": "No conversations yet. Start chatting!",
-        "conversation_title": "New Conversation",
-        "confirm_delete": "Delete this conversation?"
-    },
-    "Français": {
-        "page_title": "StyleGenie : Votre Assistant Mode Personnel",
-        "header_title": "✨ StyleGenie",
-        "header_subtitle": "Votre Assistant Mode Personnel",
-        "footer": "Fait avec amour ❤️ par Keynar",
-        "upload_section": "📸 Téléchargez Votre Image",
-        "upload_instruction": "Choisissez comment vous souhaitez fournir votre image de tenue :",
-        "upload_from_device": "📁 Télécharger depuis l'appareil",
-        "take_photo": "📷 Prendre une photo",
-        "choose_image": "Choisissez une image...",
-        "upload_help": "Téléchargez une photo de votre tenue ou de tout article de mode",
-        "uploaded_image": "Image Téléchargée",
-        "captured_image": "Image Capturée",
-        "take_photo_btn": "Prendre une photo",
-        "clear_chat": "🗑️ Effacer l'Historique",
-        "tips_title": "💡 Conseils",
-        "tips_content": """- Téléchargez ou prenez une photo de votre tenue
-- Demandez-moi de modifier les couleurs, styles ou accessoires
-- Demandez des liens d'achat pour des articles similaires
-- Je me souviens de vos préférences !""",
-        "chat_title": "💬 Discutez avec StyleGenie",
-        "chat_placeholder": "Posez-moi des questions sur la mode... ✨",
-        "thinking": "✨ StyleGenie réfléchit...",
-        "error": "❌ Oups ! Quelque chose s'est mal passé :",
-        "generated_image": "Image Générée",
-        "language_selector": "🌐 Language / Langue / Idioma",
-        "select_input": "Sélectionnez la méthode de saisie :",
-        "conversations": "💬 Conversations",
-        "new_chat": "➕ Nouveau Chat",
-        "delete_chat": "🗑️ Supprimer",
-        "rename_chat": "✏️ Renommer",
-        "no_conversations": "Aucune conversation. Commencez à discuter !",
-        "conversation_title": "Nouvelle Conversation",
-        "confirm_delete": "Supprimer cette conversation ?"
-    },
-    "Español": {
-        "page_title": "StyleGenie: Tu Asistente Personal de Moda",
-        "header_title": "✨ StyleGenie",
-        "header_subtitle": "Tu Asistente Personal de Moda",
-        "footer": "Hecho con amor ❤️ por Keynar",
-        "upload_section": "📸 Sube Tu Imagen",
-        "upload_instruction": "Elige cómo te gustaría proporcionar tu imagen de outfit:",
-        "upload_from_device": "📁 Subir desde dispositivo",
-        "take_photo": "📷 Tomar una foto",
-        "choose_image": "Elige una imagen...",
-        "upload_help": "Sube una foto de tu outfit o cualquier artículo de moda",
-        "uploaded_image": "Imagen Subida",
-        "captured_image": "Imagen Capturada",
-        "take_photo_btn": "Tomar una foto",
-        "clear_chat": "🗑️ Borrar Historial",
-        "tips_title": "💡 Consejos",
-        "tips_content": """- Sube o toma una foto de tu outfit
-- Pídeme modificar colores, estilos o accesorios
-- Solicita enlaces de compra para artículos similares
-- ¡Recuerdo tus preferencias!""",
-        "chat_title": "💬 Chatea con StyleGenie",
-        "chat_placeholder": "Pregúntame cualquier cosa sobre moda... ✨",
-        "thinking": "✨ StyleGenie está pensando...",
-        "error": "❌ ¡Ups! Algo salió mal:",
-        "generated_image": "Imagen Generada",
-        "language_selector": "🌐 Language / Langue / Idioma",
-        "select_input": "Selecciona el método de entrada:",
-        "conversations": "💬 Conversaciones",
-        "new_chat": "➕ Nuevo Chat",
-        "delete_chat": "🗑️ Eliminar",
-        "rename_chat": "✏️ Renombrar",
-        "no_conversations": "No hay conversaciones. ¡Empieza a chatear!",
-        "conversation_title": "Nueva Conversación",
-        "confirm_delete": "¿Eliminar esta conversación?"
-    },
-    "Deutsch": {
-        "page_title": "StyleGenie: Dein Persönlicher Mode-Assistent",
-        "header_title": "✨ StyleGenie",
-        "header_subtitle": "Dein Persönlicher Mode-Assistent",
-        "footer": "Mit Liebe ❤️ gemacht von Keynar",
-        "upload_section": "📸 Lade Dein Bild Hoch",
-        "upload_instruction": "Wähle, wie du dein Outfit-Bild bereitstellen möchtest:",
-        "upload_from_device": "📁 Vom Gerät hochladen",
-        "take_photo": "📷 Foto aufnehmen",
-        "choose_image": "Wähle ein Bild...",
-        "upload_help": "Lade ein Foto deines Outfits oder eines Modeartikels hoch",
-        "uploaded_image": "Hochgeladenes Bild",
-        "captured_image": "Aufgenommenes Bild",
-        "take_photo_btn": "Foto aufnehmen",
-        "clear_chat": "🗑️ Chat-Verlauf Löschen",
-        "tips_title": "💡 Tipps",
-        "tips_content": """- Lade ein Foto deines Outfits hoch oder mache eins
-- Bitte mich, Farben, Stile oder Accessoires zu ändern
-- Fordere Shopping-Links für ähnliche Artikel an
-- Ich erinnere mich an deine Vorlieben!""",
-        "chat_title": "💬 Chatte mit StyleGenie",
-        "chat_placeholder": "Frag mich alles über Mode... ✨",
-        "thinking": "✨ StyleGenie denkt nach...",
-        "error": "❌ Hoppla! Etwas ist schief gelaufen:",
-        "generated_image": "Generiertes Bild",
-        "language_selector": "🌐 Language / Langue / Idioma",
-        "select_input": "Wähle die Eingabemethode:",
-        "conversations": "💬 Unterhaltungen",
-        "new_chat": "➕ Neuer Chat",
-        "delete_chat": "🗑️ Löschen",
-        "rename_chat": "✏️ Umbenennen",
-        "no_conversations": "Keine Unterhaltungen. Fang an zu chatten!",
-        "conversation_title": "Neue Unterhaltung",
-        "confirm_delete": "Diese Unterhaltung löschen?"
-    }
-}
-
-def get_text(key):
-    """Get translated text based on selected language"""
-    lang = st.session_state.get('language', 'English')
-    return TRANSLATIONS[lang].get(key, TRANSLATIONS['English'][key])
-
-# Conversation management functions (Database-based)
 def ensure_user_exists(user_id):
     """Ensure a user record exists in the database"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (user_id,))
-    conn.commit()
-    conn.close()
+    with conn.session as s:
+        s.execute('INSERT OR IGNORE INTO users (user_id) VALUES (:user_id);', params=dict(user_id=user_id))
+        s.commit()
 
 def load_conversations(user_id):
     """Load conversations from database for a specific user"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Ensure user exists
     ensure_user_exists(user_id)
     
     # Load conversations
-    cursor.execute('''
-        SELECT conversation_id, title, messages, created_at, updated_at
-        FROM conversations
-        WHERE user_id = ?
-        ORDER BY updated_at DESC
-    ''', (user_id,))
+    rows = conn.query('SELECT conversation_id, title, messages, created_at, updated_at FROM conversations WHERE user_id = :user_id ORDER BY updated_at DESC;', params=dict(user_id=user_id))
     
-    rows = cursor.fetchall()
     conversations = {}
-    
-    for row in rows:
-        conv_id, title, messages_json, created_at, updated_at = row
+    for index, row in rows.iterrows():
+        conv_id = row['conversation_id']
+        title = row['title']
+        messages_json = row['messages']
+        created_at = row['created_at']
+        updated_at = row['updated_at']
+        
         try:
             messages = json.loads(messages_json) if messages_json else []
         except json.JSONDecodeError:
@@ -267,37 +66,29 @@ def load_conversations(user_id):
             'updated_at': updated_at
         }
     
-    conn.close()
     return conversations
 
 def save_conversations(conversations, user_id):
     """Save conversations to database for a specific user"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Ensure user exists
     ensure_user_exists(user_id)
     
-    # Delete existing conversations for this user
-    cursor.execute('DELETE FROM conversations WHERE user_id = ?', (user_id,))
-    
-    # Insert updated conversations
-    for conv_id, conv_data in conversations.items():
-        messages_json = json.dumps(conv_data.get('messages', []), ensure_ascii=False)
-        cursor.execute('''
-            INSERT INTO conversations (user_id, conversation_id, title, messages, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (
-            user_id,
-            conv_id,
-            conv_data.get('title', ''),
-            messages_json,
-            conv_data.get('created_at', datetime.now().strftime("%Y-%m-%d %H:%M")),
-            conv_data.get('updated_at', datetime.now().strftime("%Y-%m-%d %H:%M"))
-        ))
-    
-    conn.commit()
-    conn.close()
+    with conn.session as s:
+        s.execute('DELETE FROM conversations WHERE user_id = :user_id;', params=dict(user_id=user_id))
+        
+        for conv_id, conv_data in conversations.items():
+            messages_json = json.dumps(conv_data.get('messages', []), ensure_ascii=False)
+            s.execute(
+                'INSERT INTO conversations (user_id, conversation_id, title, messages, created_at, updated_at) VALUES (:user_id, :conv_id, :title, :messages, :created_at, :updated_at);',
+                params=dict(
+                    user_id=user_id,
+                    conv_id=conv_id,
+                    title=conv_data.get('title', ''),
+                    messages=messages_json,
+                    created_at=conv_data.get('created_at', datetime.now().strftime("%Y-%m-%d %H:%M")),
+                    updated_at=conv_data.get('updated_at', datetime.now().strftime("%Y-%m-%d %H:%M"))
+                )
+            )
+        s.commit()
 
 def create_new_conversation():
     """Create a new conversation"""
@@ -313,23 +104,23 @@ def create_new_conversation():
 
 def delete_conversation(user_id, conversation_id):
     """Delete a specific conversation from the database"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM conversations WHERE user_id = ? AND conversation_id = ?', (user_id, conversation_id))
-    conn.commit()
-    conn.close()
+    with conn.session as s:
+        s.execute('DELETE FROM conversations WHERE user_id = :user_id AND conversation_id = :conversation_id;', params=dict(user_id=user_id, conversation_id=conversation_id))
+        s.commit()
 
 def update_conversation_title(user_id, conversation_id, new_title):
     """Update the title of a conversation"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE conversations
-        SET title = ?, updated_at = ?
-        WHERE user_id = ? AND conversation_id = ?
-    ''', (new_title, datetime.now().strftime("%Y-%m-%d %H:%M"), user_id, conversation_id))
-    conn.commit()
-    conn.close()
+    with conn.session as s:
+        s.execute(
+            'UPDATE conversations SET title = :new_title, updated_at = :updated_at WHERE user_id = :user_id AND conversation_id = :conversation_id;',
+            params=dict(
+                new_title=new_title,
+                updated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+                user_id=user_id,
+                conversation_id=conversation_id
+            )
+        )
+        s.commit()
 
 def get_conversation_preview(messages, max_length=50):
     """Get a preview of the conversation from first user message"""
