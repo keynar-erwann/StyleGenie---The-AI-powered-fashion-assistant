@@ -1609,7 +1609,7 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             with st.container():
                 st.markdown('<div class="image-container">', unsafe_allow_html=True)
-                st.image(image, caption=get_text('uploaded_image'), use_column_width=True)
+                st.image(image, caption=get_text('uploaded_image'), use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
@@ -1632,7 +1632,7 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             with st.container():
                 st.markdown('<div class="image-container">', unsafe_allow_html=True)
-                st.image(image, caption=get_text('captured_image'), use_column_width=True)
+                st.image(image, caption=get_text('captured_image'), use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
@@ -1702,8 +1702,17 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
         response_placeholder = st.empty()
         
         try:
-            # Prepare the input for the agent
-            agent_input = [{"text": prompt}]
+            # Retrieve all memories for context (call this explicitly for reliability)
+            memories_response = get_all_memories("user information", st.session_state.user_id)
+            if memories_response.get("status") == "success" and memories_response.get("memories"):
+                # Summarize or include key memories in context (avoid exposing raw data)
+                memories_summary = "\n".join([f"- {mem.get('memory', 'N/A')}" for mem in memories_response["memories"][:5]])  # Limit to top 5 for brevity
+                context_prompt = f"Previous context from user:\n{memories_summary}\n\nCurrent query: {prompt}"
+            else:
+                context_prompt = prompt
+            
+            # Prepare the input for the agent with context
+            agent_input = [{"text": context_prompt}]
             
             # Add image if available
             if st.session_state.uploaded_image is not None:
@@ -1721,13 +1730,13 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             
             # Show loading indicator
             with response_placeholder:
-                st.markdown(f"_{get_text('thinking')}_")
+                st.markdown(f"_{get_text('thinking')}_\n\n(Retrieving memories for context...)")
             
             # Clear previous generated image flag and record timestamp
             st.session_state.latest_generated_image = None
             request_start_time = time.time()
             
-            # Get response from agent (optimized)
+            # Get response from agent (now with explicit memory context)
             agent_response = st.session_state.agent(agent_input)
             
             # Convert AgentResult to string if needed
