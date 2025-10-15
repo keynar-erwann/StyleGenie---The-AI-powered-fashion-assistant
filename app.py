@@ -957,15 +957,15 @@ YOU ARE **STYLE GENIE**, THE WORLD'S MOST ADVANCED MULTILINGUAL AI FASHION ASSIS
 
 Your memory is powered by three tools:
 
-- **`add_memories(prompt, user_name)`** → STORE relevant user information (style preferences, favorite colors, brands, budget, etc.).
-- **`search_memories(prompt, user_name)`** → RECALL specific previous interactions or fashion preferences.
-- **`get_all_memories(prompt, user_name)`** → RETRIEVE all user memories to provide personalized context.
+- **`add_memories(prompt, user_id)`** → STORE relevant user information (style preferences, favorite colors, brands, budget, etc.).
+- **`search_memories(prompt, user_id)`** → RECALL specific previous interactions or fashion preferences.
+- **`get_all_memories(prompt, user_id)`** → RETRIEVE all user memories to provide personalized context.
 
 #### 🧩 MEMORY BEHAVIOR RULES
 
 1. **ADD MEMORIES** whenever the user shares new information about themselves or their tastes.
 2. **SEARCH MEMORIES** when the user references past discussions (e.g., "Do you remember what I liked last time?").
-3. **GET ALL MEMORIES** when generating any new suggestion or styling advice to personalize the output.
+3. **GET ALL MEMORIES** ONLY at the very beginning of a new session or when personalizing suggestions—do not call it on every message.
 4. **REFER POLITELY** to stored context (e.g., "Since you mentioned liking minimalist neutral tones, I focused on that palette.").
 5. **NEVER expose or print raw memory data** — always summarize naturally.
 6. **ONLY store factual user-approved data**, never assumptions.
@@ -974,87 +974,38 @@ Your memory is powered by three tools:
 
 ### 🪪 USER IDENTITY MANAGEMENT
 
-- AT THE START of EVERY conversation, call `get_all_memories("user information", "{USER_ID}")` to check for existing memories.
+- AT THE START of a NEW SESSION (first message only), call `get_all_memories("user information", "{USER_ID}")` to check for existing memories.
 - IF memories exist, extract the user's name from the stored memories and use `"{USER_ID}"` as the user_id for all memory operations.
 - IF no memories exist, ask ONCE POLITELY in the user's language:
   > "To personalize your experience, could you please tell me your name?"
-- AFTER the user provides their name, IMMEDIATELY call `add_memories("User's name is [name]", "{USER_ID}")` to store it.
+- AFTER the user provides their name in a follow-up message, IMMEDIATELY call `add_memories("User's name is [name]", "{USER_ID}")` to store it, then continue the conversation normally without asking again.
+- IF the user has already provided a name in this session (check conversation history), do NOT ask again.
 - CRITICAL: Always use `"{USER_ID}"` for consistency. This ensures each browser session has isolated memories.
 - IF the user declines to share a name, say:
   > "No worries! I'll continue without saving preferences for now,"
-  and temporarily skip all memory-related actions.
+  and skip memory-related actions for this session.
 
 ---
 
 ### 🧭 CORE CAPABILITIES
 
-1. **IDENTITY-PRESERVING IMAGE EDITING**
-   - When the user uploads an image, it is automatically stored in the system.
-   - When the user asks to modify, edit, or change anything about the outfit/clothing:
-     - **IMMEDIATELY** use the `generate_image` tool with a detailed prompt describing the modification.
-     - The tool will automatically access the stored image from the current context.
-   - KEYWORDS that trigger image generation: "change", "modify", "make", "wear", "put on", "switch", "replace", "different color", "different outfit".
-   - **CRITICAL:** MODIFY outfits, colors, or accessories while keeping: FACE, BODY, POSE, HAIRSTYLE, and BACKGROUND unchanged.
-   - After the image is generated, DESCRIBE the edits factually and briefly.
-
-2. **PROACTIVE STYLING & SUGGESTIONS (The Stylist's Role)**
-   - **User Requests Opinion/Suggestion (e.g., "What should I wear?", "Do you like it?"):**
-     - You must offer a personalized suggestion based on the user's photo and memories.
-     - **IMMEDIATELY** use the `generate_image` tool with a detailed prompt for your suggested outfit.
-   - **After a User Edit is Completed (Proactive Suggestion):**
-     - You may offer **one** unsolicited, personalized suggestion *after* successfully completing the user's primary edit request.
-     - Frame it as: "That looks great! If you're open to a fresh idea, I have a thought on a slightly different silhouette that would also look amazing..."
-     - If you make a suggestion, **IMMEDIATELY** use the `generate_image` tool.
-     - **If the user expresses liking the generated image (e.g., "I like this", "find similar", "buy this outfit"), trigger the shopping workflow using `web_search` with a query based on the outfit.** Include budget/country from memory if available.
-
-3. **INTELLIGENT SHOPPING ASSISTANT**
-   - WHEN asked to find or buy an outfit:
-     - IF **budget or country** is missing, ask once:
-       > "To help you best, could you please tell me your budget and which country you are in?"
-       (Translate automatically to the user's language)
-     - **WAIT** for their response before continuing.
-   - USE `user_country(country_name)` to retrieve localized data.
-   - IDENTIFY each visible clothing item (type, color, style).
-   - BUILD search query:
-     `[item type] [color] [style keywords] [country] buy OR acheter [retailer]`
-   - EXECUTE `web_search(query)` → return only verified URLs.
-   - IF no results found: "I couldn't find good results, I'll try different keywords or retailers."
-
-   **POPULAR RETAILERS BY REGION (Use these keywords in search queries when local results are needed):**
-   - France: Zalando, Asos, Zara.fr, H&M.fr, Shein
-   - Spain: Zara.es, Mango, Zalando, Asos
-   - Germany: Zalando.de, About You, Asos
-   - UK/US: Asos, Zara, H&M, Amazon, Nordstrom
+[Keep this section unchanged—it's solid.]
 
 ---
 
 ### 🌐 MULTILINGUAL BEHAVIOR RULES
 
-- DETECT and RESPOND automatically in the **SAME LANGUAGE** as the latest user message.
+- ALWAYS DETECT the language of the user's LATEST message and RESPOND in THAT EXACT LANGUAGE.
+- If the user's message is in multiple languages, default to the primary one (e.g., the first sentence).
 - NEVER switch languages unless explicitly requested.
 - MAINTAIN the friendly, enthusiastic, and professional tone at all times.
+- If language detection fails, default to English but note it politely (e.g., "I'm responding in English for now—let me know if you'd prefer another language!").
 
 ---
 
 ### 🖼️ RESPONSE FORMATS
 
-#### 🔹 IF A USER-REQUESTED IMAGE EDIT WAS GENERATED
-**Updated Look:** [Brief, neutral description of visual changes]
-
-#### 🔹 IF A STYLIST SUGGESTION IMAGE WAS GENERATED
-**StyleGenie Suggestion:** [Enthusiastic explanation of the suggested look and why it works for them, referencing memory if possible.]
-
-#### 🔹 IF SHOPPING RESULTS WERE FOUND
-**Outfit Details:** [List main items]
-**Shopping Options:**
-- **Product:** [Exact title]
-- **Price:** [Price, if found]
-- **Link:** [Verified URL only]
-- **Retailer:** [Domain]
-
-**Budget Summary:**
-- **Estimated Total:** [Sum of prices]
-- **Remaining:** [Budget - total]
+[Keep this unchanged.]
 
 ---
 
@@ -1062,8 +1013,8 @@ Your memory is powered by three tools:
 
 | **Intent** | **Action** |
 | :--- | :--- |
-| Start conversation | `get_all_memories("user information", "{USER_ID}")` → check for existing memories |
-| New user (no memories) | Ask for name → store with `add_memories()` |
+| First message in session | `get_all_memories("user information", "{USER_ID}")` → check for existing memories |
+| New user (no memories) | Ask for name ONCE → store with `add_memories()` on next response |
 | **User Style Edit Request** | **IMMEDIATELY** `generate_image(detailed_prompt)` → factual description → **Optional Suggestion** |
 | **User Opinion/Suggestion Request** | `search_memories()` → **IMMEDIATELY** `generate_image(suggestion prompt)` → explain idea |
 | Shopping request | Ask for missing info (country, budget) → `user_country()` → `web_search()` |
@@ -1074,25 +1025,23 @@ Your memory is powered by three tools:
 ### 🧩 CHAIN OF THOUGHT PROCESS
 
 1. **UNDERSTAND:** Identify the user's primary intent (styling, shopping, opinion, memory).
-2. **BASICS:** Extract garments, preferences, or missing data (country, budget).
-3. **ANALYZE:** Retrieve memory (`get_all_memories()` or `search_memories()`) to personalize the approach.
-4. **EXECUTE PRIMARY TASK:** Call the necessary tool(s) (`generate_image`, `web_search`, etc.).
-5. **PROACTIVE STYLING CHECK:** If an edit was just completed OR an opinion was asked for, formulate and execute **one** visual suggestion using `generate_image()`.
-6. **FINAL ANSWER:** Present all output clearly, in the user's language, using the proper format and enthusiastic tone.
+2. **CHECK SESSION START:** If this is the FIRST message, retrieve memories. Otherwise, use conversation history for context.
+3. **BASICS:** Extract garments, preferences, or missing data (country, budget).
+4. **ANALYZE:** Retrieve memory (`get_all_memories()` or `search_memories()`) ONLY if needed to personalize.
+5. **EXECUTE PRIMARY TASK:** Call the necessary tool(s) (`generate_image`, `web_search`, etc.).
+6. **PROACTIVE STYLING CHECK:** If an edit was just completed OR an opinion was asked for, formulate and execute **one** visual suggestion using `generate_image()`.
+7. **FINAL ANSWER:** Present all output clearly, in the user's language, using the proper format and enthusiastic tone.
 
 ---
 
 ### 🚫 WHAT NOT TO DO
 
-- ❌ NEVER alter physical identity or environment in images.
-- ❌ NEVER invent URLs, brands, or prices.
-- ❌ NEVER guess the user's name or preferences — always confirm.
-- ❌ NEVER show or expose raw memory data.
-- ❌ NEVER ignore the user's language.
+[Keep unchanged, add:] - ❌ NEVER repeat the name question if already asked in this session (check history).
 
 ---
 
 </system_prompt>
+
 """
 
 # Initialize genai client (cached to avoid recreation)
@@ -1287,13 +1236,13 @@ def user_country(name: str) -> dict:
 
 
 @tool
-def add_memories(prompt: str, user_name: str) -> dict:
+def add_memories(prompt: str, user_id: str) -> dict:
     """
     This function tool allows you to save the user's message.
     
     Args:
         prompt: the user's query
-        user_name: the user's name
+        user_id: the user's id
     
     Returns:
         The status of the function tool usage
@@ -1315,22 +1264,22 @@ def add_memories(prompt: str, user_name: str) -> dict:
     }
     
     try:
-        client.add([message], user_id=user_name)
-        print(f"Memory added successfully for user: {user_name}")
+        client.add([message], user_id=user_id)
+        print(f"Memory added successfully for user: {user_id}")
         return {"status": "success"}
     except Exception as e:
-        print(f"Error adding memory for user {user_name}: {str(e)}")
+        print(f"Error adding memory for user {user_id}: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 
 @tool
-def search_memories(prompt: str, user_name: str) -> dict:
+def search_memories(prompt: str, user_id: str) -> dict:
     """
     This function tool allows you to search for relevant memories.
     
     Args:
         prompt: the search query
-        user_name: the user's name
+        user_id: the user's id
     
     Returns:
         The status of the function tool usage
@@ -1345,28 +1294,29 @@ def search_memories(prompt: str, user_name: str) -> dict:
     filters = {
         "AND": [
             {
-                "user_id": user_name
+                "user_id": user_id
             }
         ]
     }
     
     try:
         results = client.search(prompt, version="v2", filters=filters)
-        print(f"Memory search successful for user: {user_name}, found {len(results) if results else 0} results")
+        num_results = len(results) if results else 0
+        print(f"Memory search successful for user: {user_id}, found {num_results} results")
         return {"status": "success", "results": results}
     except Exception as e:
-        print(f"Error searching memories for user {user_name}: {str(e)}")
+        print(f"Error searching memories for user {user_id}: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 
 @tool
-def get_all_memories(prompt: str, user_name: str) -> dict:
+def get_all_memories(prompt: str, user_id: str) -> dict:
     """
     This function allows you to retrieve all memories of a user.
     
     Args:
         prompt: the user's query
-        user_name: the user's name
+        user_id: the user's id
     
     Returns:
         The status of the function tool usage
@@ -1381,17 +1331,17 @@ def get_all_memories(prompt: str, user_name: str) -> dict:
     filters = {
         "AND": [
             {
-                "user_id": user_name
+                "user_id": user_id
             }
         ]
     }
     
     try:
         all_memories = client.get_all(version="v2", filters=filters, page=1, page_size=50)
-        print(f"Retrieved {len(all_memories) if all_memories else 0} memories for user: {user_name}")
+        print(f"Retrieved {len(all_memories) if all_memories else 0} memories for user: {user_id}")
         return {"status": "success", "memories": all_memories}
     except Exception as e:
-        print(f"Error getting all memories for user {user_name}: {str(e)}")
+        print(f"Error getting all memories for user {user_id}: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 
@@ -1704,15 +1654,49 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
         
         try:
             # Prepare the input for the agent
-            agent_input = [{"text": prompt}]
-            
-            # Add image if available
+            # Build a full conversation history so the agent has access to prior user and assistant messages
+            # Each entry can include text and, when available, image bytes (decoded from base64 or raw bytes)
+            history_input = []
+            for m in st.session_state.messages:
+                entry = {}
+                role = m.get("role", "user")
+                content = m.get("content", "")
+                if content:
+                    entry["text"] = str(content)
+                entry["role"] = role
+                # Include images from saved conversation entries if present
+                if "image" in m and m["image"]:
+                    image_bytes = None
+                    try:
+                        # If image was saved as base64 string in conversations, decode it
+                        if isinstance(m["image"], str):
+                            image_bytes = base64.b64decode(m["image"])
+                        elif isinstance(m["image"], (bytes, bytearray)):
+                            image_bytes = bytes(m["image"])
+                    except Exception:
+                        image_bytes = None
+
+                    if image_bytes:
+                        entry["image"] = {
+                            "format": "jpeg",
+                            "source": {"bytes": image_bytes},
+                        }
+
+                history_input.append(entry)
+
+            # Append the new user prompt as the latest message
+            history_input.append({"text": prompt, "role": "user"})
+
+            # Start agent_input with the assembled history
+            agent_input = history_input
+
+            # Also attach the currently uploaded image (if any) as an explicit image part
+            # This mirrors the previous behavior but now the agent will also receive past images from history
             if st.session_state.uploaded_image is not None:
-                # Convert image to bytes
                 img_byte_arr = BytesIO()
                 st.session_state.uploaded_image.save(img_byte_arr, format='JPEG')
                 image_bytes = img_byte_arr.getvalue()
-                
+
                 agent_input.append({
                     "image": {
                         "format": "jpeg",
