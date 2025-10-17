@@ -991,7 +991,7 @@ YOU HAVE ACCESS TO THREE MEMORY TOOLS:
 
 1. **STYLE ANALYSIS** — Analyze uploaded outfits and describe key elements (fit, color, aesthetic).  
 2. **OUTFIT MODIFICATION** — Use `generate_image(prompt)` to apply style changes while **preserving the user’s identity**.  
-3. **SHOPPING ASSISTANCE** — Find product links or alternatives using `web_search()`. **ALWAYS ask for country and budget if not already known** when the user requests outfit searches or links. If an outfit was just generated, ask if they want to search for the original image or the generated one. Use `user_country()` to adapt to local trends and availability.  
+3. **SHOPPING ASSISTANCE** — Find product links or alternatives using `web_search()`. **ALWAYS include relevant URLs from search results in your response** when providing shopping recommendations or product information. **ALWAYS ask for country and budget if not already known** when the user requests outfit searches or links. If an outfit was just generated, ask if they want to search for the original image or the generated one. Use `user_country()` to adapt to local trends and availability.  
 4. **CULTURAL CONTEXTUALIZATION** — When asked, adapt style advice to local weather, traditions, or trends using `user_country()`.  
 5. **MEMORY-AWARE PERSONALIZATION** — Integrate user history into every response.  
 6. **MULTILINGUAL DIALOGUE** — Respond fluently and consistently in the user’s active language.  
@@ -1527,7 +1527,7 @@ with st.sidebar:
     st.markdown(f'<div class="sidebar-header"><h3>{get_text("conversations")}</h3></div>', unsafe_allow_html=True)
     
     # New chat button with better mobile styling
-    if st.button(get_text('new_chat'), width="stretch", type="primary"):
+    if st.button(get_text('new_chat'), use_container_width=True, type="primary"):
         new_conv = create_new_conversation()
         st.session_state.conversations[new_conv['id']] = new_conv
         st.session_state.current_conversation_id = new_conv['id']
@@ -1567,7 +1567,7 @@ with st.sidebar:
                     if st.button(
                         button_label,
                         key=f"conv_{conv_id}",
-                        width="stretch",
+                        use_container_width=True,
                         disabled=is_current,
                         type=button_style
                     ):
@@ -1578,7 +1578,7 @@ with st.sidebar:
                 
                 with col2:
                     # Mobile-friendly delete button
-                    if st.button("🗑️", key=f"del_{conv_id}", help=get_text('delete_chat'), width="stretch"):
+                    if st.button("🗑️", key=f"del_{conv_id}", help=get_text('delete_chat'), use_container_width=True):
                         if len(st.session_state.conversations) > 1:
                             del st.session_state.conversations[conv_id]
                             save_conversations(st.session_state.conversations, st.session_state.user_id)
@@ -1625,7 +1625,7 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             with st.container():
                 st.markdown('<div class="image-container">', unsafe_allow_html=True)
-                st.image(image, caption=get_text('uploaded_image'), width="stretch")
+                st.image(image, caption=get_text('uploaded_image'), use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
@@ -1648,7 +1648,7 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             with st.container():
                 st.markdown('<div class="image-container">', unsafe_allow_html=True)
-                st.image(image, caption=get_text('captured_image'), width="stretch")
+                st.image(image, caption=get_text('captured_image'), use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
@@ -1666,7 +1666,7 @@ with st.sidebar:
     st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
     
     # Enhanced clear chat button
-    if st.button(get_text('clear_chat'), width="stretch", type="secondary"):
+    if st.button(get_text('clear_chat'), use_container_width=True, type="secondary"):
         # Clear messages in current conversation
         if st.session_state.current_conversation_id in st.session_state.conversations:
             st.session_state.conversations[st.session_state.current_conversation_id]['messages'] = []
@@ -1703,7 +1703,7 @@ for message in st.session_state.messages:
                     # Validate image before displaying
                     temp_image = Image.open(BytesIO(image_bytes))
                     if temp_image.size[0] > 0 and temp_image.size[1] > 0:
-                        st.image(image_bytes, caption=get_text('generated_image'), width=True)
+                        st.image(image_bytes, caption=get_text('generated_image'), use_container_width=True)
                     else:
                         st.error("Error: Invalid image dimensions in saved conversation")
                 except Exception as e:
@@ -1832,7 +1832,7 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
                     temp_image = Image.open(BytesIO(generated_image_bytes))
                     if temp_image.size[0] > 0 and temp_image.size[1] > 0 and temp_image.format:
                         print(f"Displaying generated image: {len(generated_image_bytes)} bytes")
-                        st.image(generated_image_bytes, caption=get_text('generated_image'), width=True)
+                        st.image(generated_image_bytes, caption=get_text('generated_image'), use_container_width=True)
                     else:
                         print("Generated image has invalid dimensions or format")
                         st.error("Error: Generated image has invalid dimensions or format")
