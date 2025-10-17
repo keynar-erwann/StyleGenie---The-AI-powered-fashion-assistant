@@ -1384,6 +1384,29 @@ def update_generated_image(image_bytes):
     global latest_generated_image_bytes
     latest_generated_image_bytes = image_bytes
 
+
+def get_agent(user_id):
+    """Lazily initialize and return the agent for the session.
+
+    This avoids creating the agent at import time (which can fail on
+    Streamlit Cloud when API keys are not configured). If initialization
+    fails, None is returned and the caller should handle it.
+    """
+    try:
+        if 'agent' not in st.session_state or st.session_state.agent is None:
+            try:
+                st.session_state.agent = initialize_agent(user_id)
+            except Exception as e:
+                # Don't crash the app at import time; log the error and
+                # keep agent as None so we can show a helpful message when
+                # the user tries to use functionality that requires it.
+                print(f"Failed to initialize agent: {e}")
+                st.session_state.agent = None
+        return st.session_state.agent
+    except Exception as e:
+        print(f"Unexpected error in get_agent: {e}")
+        return None
+
 # Initialize session state
 # Generate unique user ID for this session to isolate memories per user
 if "user_id" not in st.session_state:
@@ -1421,8 +1444,9 @@ if "generated_images" not in st.session_state:
 if "latest_generated_image" not in st.session_state:
     st.session_state.latest_generated_image = None
 
-# Initialize agent fresh each time to ensure tools have access to current session state
-st.session_state.agent = initialize_agent(st.session_state.user_id)
+# Initialize agent lazily so app startup won't fail if API keys or optional
+# packages are missing. get_agent will try to initialize when needed.
+st.session_state.agent = get_agent(st.session_state.user_id)
 
 if "language" not in st.session_state:
     st.session_state.language = "English"
