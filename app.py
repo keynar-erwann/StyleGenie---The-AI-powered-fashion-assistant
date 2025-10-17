@@ -1462,7 +1462,7 @@ with st.sidebar:
     st.markdown(f'<div class="sidebar-header"><h3>{get_text("conversations")}</h3></div>', unsafe_allow_html=True)
     
     # New chat button with better mobile styling
-    if st.button(get_text('new_chat'), use_container_width=True, type="primary"):
+    if st.button(get_text('new_chat'), width="stretch", type="primary"):
         new_conv = create_new_conversation()
         st.session_state.conversations[new_conv['id']] = new_conv
         st.session_state.current_conversation_id = new_conv['id']
@@ -1502,7 +1502,7 @@ with st.sidebar:
                     if st.button(
                         button_label,
                         key=f"conv_{conv_id}",
-                        use_container_width=True,
+                        width="stretch",
                         disabled=is_current,
                         type=button_style
                     ):
@@ -1513,7 +1513,7 @@ with st.sidebar:
                 
                 with col2:
                     # Mobile-friendly delete button
-                    if st.button("🗑️", key=f"del_{conv_id}", help=get_text('delete_chat'), use_container_width=True):
+                    if st.button("🗑️", key=f"del_{conv_id}", help=get_text('delete_chat'), width="stretch"):
                         if len(st.session_state.conversations) > 1:
                             del st.session_state.conversations[conv_id]
                             save_conversations(st.session_state.conversations, st.session_state.user_id)
@@ -1560,7 +1560,7 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             with st.container():
                 st.markdown('<div class="image-container">', unsafe_allow_html=True)
-                st.image(image, caption=get_text('uploaded_image'), use_container_width=True)
+                st.image(image, caption=get_text('uploaded_image'), width="stretch")
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
@@ -1583,7 +1583,7 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             with st.container():
                 st.markdown('<div class="image-container">', unsafe_allow_html=True)
-                st.image(image, caption=get_text('captured_image'), use_container_width=True)
+                st.image(image, caption=get_text('captured_image'), width="stretch")
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
@@ -1601,7 +1601,7 @@ with st.sidebar:
     st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
     
     # Enhanced clear chat button
-    if st.button(get_text('clear_chat'), use_container_width=True, type="secondary"):
+    if st.button(get_text('clear_chat'), width="stretch", type="secondary"):
         # Clear messages in current conversation
         if st.session_state.current_conversation_id in st.session_state.conversations:
             st.session_state.conversations[st.session_state.current_conversation_id]['messages'] = []
