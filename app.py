@@ -1384,29 +1384,6 @@ def update_generated_image(image_bytes):
     global latest_generated_image_bytes
     latest_generated_image_bytes = image_bytes
 
-
-def get_agent(user_id):
-    """Lazily initialize and return the agent for the session.
-
-    This avoids creating the agent at import time (which can fail on
-    Streamlit Cloud when API keys are not configured). If initialization
-    fails, None is returned and the caller should handle it.
-    """
-    try:
-        if 'agent' not in st.session_state or st.session_state.agent is None:
-            try:
-                st.session_state.agent = initialize_agent(user_id)
-            except Exception as e:
-                # Don't crash the app at import time; log the error and
-                # keep agent as None so we can show a helpful message when
-                # the user tries to use functionality that requires it.
-                print(f"Failed to initialize agent: {e}")
-                st.session_state.agent = None
-        return st.session_state.agent
-    except Exception as e:
-        print(f"Unexpected error in get_agent: {e}")
-        return None
-
 # Initialize session state
 # Generate unique user ID for this session to isolate memories per user
 if "user_id" not in st.session_state:
@@ -1444,9 +1421,8 @@ if "generated_images" not in st.session_state:
 if "latest_generated_image" not in st.session_state:
     st.session_state.latest_generated_image = None
 
-# Initialize agent lazily so app startup won't fail if API keys or optional
-# packages are missing. get_agent will try to initialize when needed.
-st.session_state.agent = get_agent(st.session_state.user_id)
+# Initialize agent fresh each time to ensure tools have access to current session state
+st.session_state.agent = initialize_agent(st.session_state.user_id)
 
 if "language" not in st.session_state:
     st.session_state.language = "English"
@@ -1486,7 +1462,7 @@ with st.sidebar:
     st.markdown(f'<div class="sidebar-header"><h3>{get_text("conversations")}</h3></div>', unsafe_allow_html=True)
     
     # New chat button with better mobile styling
-    if st.button(get_text('new_chat'), width=True, type="primary"):
+    if st.button(get_text('new_chat'), use_container_width=True, type="primary"):
         new_conv = create_new_conversation()
         st.session_state.conversations[new_conv['id']] = new_conv
         st.session_state.current_conversation_id = new_conv['id']
@@ -1526,7 +1502,7 @@ with st.sidebar:
                     if st.button(
                         button_label,
                         key=f"conv_{conv_id}",
-                        width=True,
+                        use_container_width=True,
                         disabled=is_current,
                         type=button_style
                     ):
@@ -1537,7 +1513,7 @@ with st.sidebar:
                 
                 with col2:
                     # Mobile-friendly delete button
-                    if st.button("🗑️", key=f"del_{conv_id}", help=get_text('delete_chat'), width=True):
+                    if st.button("🗑️", key=f"del_{conv_id}", help=get_text('delete_chat'), use_container_width=True):
                         if len(st.session_state.conversations) > 1:
                             del st.session_state.conversations[conv_id]
                             save_conversations(st.session_state.conversations, st.session_state.user_id)
@@ -1584,7 +1560,7 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             with st.container():
                 st.markdown('<div class="image-container">', unsafe_allow_html=True)
-                st.image(image, caption=get_text('uploaded_image'), width=True)
+                st.image(image, caption=get_text('uploaded_image'), use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
@@ -1607,7 +1583,7 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             with st.container():
                 st.markdown('<div class="image-container">', unsafe_allow_html=True)
-                st.image(image, caption=get_text('captured_image'), width=True)
+                st.image(image, caption=get_text('captured_image'), use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
@@ -1625,7 +1601,7 @@ with st.sidebar:
     st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
     
     # Enhanced clear chat button
-    if st.button(get_text('clear_chat'), width=True, type="secondary"):
+    if st.button(get_text('clear_chat'), use_container_width=True, type="secondary"):
         # Clear messages in current conversation
         if st.session_state.current_conversation_id in st.session_state.conversations:
             st.session_state.conversations[st.session_state.current_conversation_id]['messages'] = []
