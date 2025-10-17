@@ -1,3 +1,4 @@
+import asyncio
 import streamlit as st
 from google import genai
 import os
@@ -1117,7 +1118,7 @@ def get_genai_client():
 
 # Tool definitions
 @tool
-def generate_image(prompt: str) -> str:
+async def generate_image(prompt: str) -> str:
     """" 
     This function allows you to generate an image based on the user's query.
     It modifies the current image that the user uploaded while preserving their identity.
@@ -1236,7 +1237,7 @@ When modifying clothing in images, you must:
 
 
 @tool
-def web_search(search: str) -> dict:
+async def web_search(search: str) -> dict:
     """
     This function allows the model to make searches online based on a subject given by the user.
     
@@ -1278,7 +1279,7 @@ def web_search(search: str) -> dict:
 
 
 @tool
-def user_country(name: str) -> dict:
+async def user_country(name: str) -> dict:
     """
     This function allows you to find information about the user's country.
     """
@@ -1300,7 +1301,7 @@ def user_country(name: str) -> dict:
 
 
 @tool
-def add_memories(prompt: str, user_id: str) -> dict:
+async def add_memories(prompt: str, user_id: str) -> dict:
     """
     This function tool allows you to save the user's message.
     
@@ -1337,7 +1338,7 @@ def add_memories(prompt: str, user_id: str) -> dict:
 
 
 @tool
-def search_memories(prompt: str, user_id: str) -> dict:
+async def search_memories(prompt: str, user_id: str) -> dict:
     """
     This function tool allows you to search for relevant memories.
     
@@ -1374,7 +1375,7 @@ def search_memories(prompt: str, user_id: str) -> dict:
 
 
 @tool
-def get_all_memories(prompt: str, user_id: str) -> dict:
+async def get_all_memories(prompt: str, user_id: str) -> dict:
     """
     This function allows you to retrieve all memories of a user.
     
@@ -1428,7 +1429,8 @@ def initialize_agent(user_id):
         model=model,
         tools=[generate_image, user_country, web_search, get_all_memories, search_memories, add_memories],
         system_prompt=personalized_prompt,
-        conversation_manager=SummarizingConversationManager()
+        conversation_manager=SummarizingConversationManager(),
+        async_mode=True
     )
     
     return agent
@@ -1808,7 +1810,7 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             request_start_time = time.time()
             
             # Get response from agent (optimized)
-            agent_response = st.session_state.agent(agent_input)
+            agent_response = asyncio.run(st.session_state.agent(agent_input))
             
             # Convert AgentResult to string if needed
             if hasattr(agent_response, 'content'):
