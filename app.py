@@ -1769,6 +1769,27 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             # Display response immediately
             response_placeholder.markdown(response)
             
+            # Add Buy Outfit button for text-only responses or after response display
+            if st.button("🛒 Buy This Outfit", key=f"buy_text_{st.session_state.current_conversation_id}_{len(st.session_state.messages)}"):
+                with st.spinner("Searching for similar outfits..."):
+                    # Use the textual response as search query
+                    search_query = response if response else "fashion outfit"
+                    search_results = st.session_state.agent.tools['web_search'].func(search_query)
+                    
+                    # Store results in session state for display
+                    st.session_state.search_results = search_results
+                    st.success("Search completed! Check results below.")
+                    
+                    # Display search results
+                    if search_results and search_results.get('results'):
+                        with st.expander("🛍️ Shopping Results", expanded=True):
+                            for result in search_results['results'][:5]:  # Limit to top 5
+                                st.markdown(f"**[{result['title']}]({result['url']})**")
+                                st.write(result['content'])
+                                st.markdown("---")
+                    else:
+                        st.info("No matching outfits found. Try refining your search.")
+            
             # Check if a new image was generated and display it
             # Try global variable first, then session state
             generated_image_bytes = latest_generated_image_bytes or st.session_state.get('latest_generated_image', None)
@@ -1780,6 +1801,27 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
                     if temp_image.size[0] > 0 and temp_image.size[1] > 0:
                         print(f"Displaying generated image: {len(generated_image_bytes)} bytes")
                         st.image(generated_image_bytes, caption=get_text('generated_image'), width="stretch")
+                        
+                        # Add Buy Outfit button after image
+                        if st.button("🛒 Buy This Outfit", key=f"buy_{st.session_state.current_conversation_id}_{len(st.session_state.messages)}"):
+                            with st.spinner("Searching for similar outfits..."):
+                                # Use the textual response as search query
+                                search_query = response if response else "fashion outfit"
+                                search_results = st.session_state.agent.tools['web_search'].func(search_query)
+                                
+                                # Store results in session state for display
+                                st.session_state.search_results = search_results
+                                st.success("Search completed! Check results below.")
+                                
+                                # Display search results
+                                if search_results and search_results.get('results'):
+                                    with st.expander("🛍️ Shopping Results", expanded=True):
+                                        for result in search_results['results'][:5]:  # Limit to top 5
+                                            st.markdown(f"**[{result['title']}]({result['url']})**")
+                                            st.write(result['content'])
+                                            st.markdown("---")
+                                else:
+                                    st.info("No matching outfits found. Try refining your search.")
                     else:
                         print("Generated image has invalid dimensions")
                         st.error("Error: Generated image has invalid dimensions")
