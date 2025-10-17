@@ -1809,7 +1809,7 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             request_start_time = time.time()
             
             # Get response from agent (optimized)
-            agent_response = asyncio.run(st.session_state.agent(agent_input))
+            agent_response = st.session_state.agent(agent_input)
             
             # Convert AgentResult to string if needed
             if hasattr(agent_response, 'content'):
