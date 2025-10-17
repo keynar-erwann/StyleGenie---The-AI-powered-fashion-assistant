@@ -1560,7 +1560,7 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             with st.container():
                 st.markdown('<div class="image-container">', unsafe_allow_html=True)
-                st.image(image, caption=get_text('uploaded_image'), use_column_width=True)
+                st.image(image, caption=get_text('uploaded_image'), use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
@@ -1583,7 +1583,7 @@ with st.sidebar:
             st.session_state.uploaded_image = image
             with st.container():
                 st.markdown('<div class="image-container">', unsafe_allow_html=True)
-                st.image(image, caption=get_text('captured_image'), use_column_width=True)
+                st.image(image, caption=get_text('captured_image'), use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Save the image temporarily and store bytes
