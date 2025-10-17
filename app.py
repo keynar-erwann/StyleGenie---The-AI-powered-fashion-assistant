@@ -1430,7 +1430,7 @@ def initialize_agent(user_id):
         tools=[generate_image, user_country, web_search, get_all_memories, search_memories, add_memories],
         system_prompt=personalized_prompt,
         conversation_manager=SummarizingConversationManager(),
-        async_mode=True
+        
     )
     
     return agent
