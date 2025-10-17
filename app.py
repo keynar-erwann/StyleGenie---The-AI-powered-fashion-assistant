@@ -1131,30 +1131,42 @@ When modifying clothing in images, you must:
                 if part.text is not None:
                     full_response += part.text
                 elif part.inline_data is not None:
-                    generated_image = Image.open(BytesIO(part.inline_data.data))
-                    
-                    # Convert image to bytes for display in chat
-                    img_byte_arr = BytesIO()
-                    generated_image.save(img_byte_arr, format='PNG')
-                    image_bytes = img_byte_arr.getvalue()
-                    
-                    # Store image bytes in global variable and session state
-                    update_generated_image(image_bytes)
-                    
                     try:
-                        if hasattr(st, 'session_state'):
-                            if 'generated_images' not in st.session_state:
-                                st.session_state.generated_images = []
-                            st.session_state.generated_images.append(image_bytes)
-                            st.session_state.latest_generated_image = image_bytes
-                            print(f"Image stored in session state: {len(image_bytes)} bytes")
-                        else:
-                            print("No session state available in tool context")
-                    except Exception as e:
-                        print(f"Error storing image in session state: {e}")
-                        pass
-                    
-                    print("Image generated successfully and stored in memory")
+                        generated_image = Image.open(BytesIO(part.inline_data.data))
+
+                        # Validate image dimensions
+                        if generated_image.size[0] <= 0 or generated_image.size[1] <= 0:
+                            print(f"Invalid image dimensions: {generated_image.size}")
+                            full_response = "Error: Generated image has invalid dimensions. Please try again."
+                            generated_image = None
+                            continue
+
+                        # Convert image to bytes for display in chat
+                        img_byte_arr = BytesIO()
+                        generated_image.save(img_byte_arr, format='PNG')
+                        image_bytes = img_byte_arr.getvalue()
+
+                        # Store image bytes in global variable and session state
+                        update_generated_image(image_bytes)
+
+                        try:
+                            if hasattr(st, 'session_state'):
+                                if 'generated_images' not in st.session_state:
+                                    st.session_state.generated_images = []
+                                st.session_state.generated_images.append(image_bytes)
+                                st.session_state.latest_generated_image = image_bytes
+                                print(f"Image stored in session state: {len(image_bytes)} bytes")
+                            else:
+                                print("No session state available in tool context")
+                        except Exception as e:
+                            print(f"Error storing image in session state: {e}")
+                            pass
+
+                        print("Image generated successfully and stored in memory")
+                    except Exception as img_error:
+                        print(f"Error processing generated image: {img_error}")
+                        full_response = f"Error processing generated image: {str(img_error)}. Please try again."
+                        generated_image = None
         except Exception as ex:
             full_response = f"ERROR in image generation: {str(ex)}"
             generated_image = None
@@ -1633,11 +1645,27 @@ for message in st.session_state.messages:
             if isinstance(message["image"], str):
                 # Base64 encoded image from saved conversation
                 import base64
-                image_bytes = base64.b64decode(message["image"])
-                st.image(image_bytes, caption=get_text('generated_image'), width=True)
+                try:
+                    image_bytes = base64.b64decode(message["image"])
+                    # Validate image before displaying
+                    temp_image = Image.open(BytesIO(image_bytes))
+                    if temp_image.size[0] > 0 and temp_image.size[1] > 0:
+                        st.image(image_bytes, caption=get_text('generated_image'), width=True)
+                    else:
+                        st.error("Error: Invalid image dimensions in saved conversation")
+                except Exception as e:
+                    st.error(f"Error displaying saved image: {str(e)}")
             elif isinstance(message["image"], bytes):
                 # Direct image bytes
-                st.image(message["image"], caption=get_text('generated_image'), width=True)
+                try:
+                    # Validate image before displaying
+                    temp_image = Image.open(BytesIO(message["image"]))
+                    if temp_image.size[0] > 0 and temp_image.size[1] > 0:
+                        st.image(message["image"], caption=get_text('generated_image'), width=True)
+                    else:
+                        st.error("Error: Invalid image dimensions")
+                except Exception as e:
+                    st.error(f"Error displaying image: {str(e)}")
 
 # Chat input
 if prompt := st.chat_input(get_text('chat_placeholder')):
@@ -1671,8 +1699,16 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
                         # If image was saved as base64 string in conversations, decode it
                         if isinstance(m["image"], str):
                             image_bytes = base64.b64decode(m["image"])
+                            # Validate image before including in history
+                            temp_image = Image.open(BytesIO(image_bytes))
+                            if temp_image.size[0] <= 0 or temp_image.size[1] <= 0:
+                                image_bytes = None
                         elif isinstance(m["image"], (bytes, bytearray)):
                             image_bytes = bytes(m["image"])
+                            # Validate image before including in history
+                            temp_image = Image.open(BytesIO(image_bytes))
+                            if temp_image.size[0] <= 0 or temp_image.size[1] <= 0:
+                                image_bytes = None
                     except Exception:
                         image_bytes = None
 
@@ -1693,16 +1729,23 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             # Also attach the currently uploaded image (if any) as an explicit image part
             # This mirrors the previous behavior but now the agent will also receive past images from history
             if st.session_state.uploaded_image is not None:
-                img_byte_arr = BytesIO()
-                st.session_state.uploaded_image.save(img_byte_arr, format='JPEG')
-                image_bytes = img_byte_arr.getvalue()
-
-                agent_input.append({
-                    "image": {
-                        "format": "jpeg",
-                        "source": {"bytes": image_bytes},
-                    },
-                })
+                try:
+                    img_byte_arr = BytesIO()
+                    st.session_state.uploaded_image.save(img_byte_arr, format='JPEG')
+                    image_bytes = img_byte_arr.getvalue()
+                    
+                    # Validate uploaded image before sending to agent
+                    temp_image = Image.open(BytesIO(image_bytes))
+                    if temp_image.size[0] > 0 and temp_image.size[1] > 0:
+                        agent_input.append({
+                            "image": {
+                                "format": "jpeg",
+                                "source": {"bytes": image_bytes},
+                            },
+                        })
+                except Exception as e:
+                    print(f"Error processing uploaded image for agent: {e}")
+                    st.error(f"Error processing uploaded image: {str(e)}")
             
             # Show loading indicator
             with response_placeholder:
@@ -1731,8 +1774,18 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
             generated_image_bytes = latest_generated_image_bytes or st.session_state.get('latest_generated_image', None)
             
             if generated_image_bytes and isinstance(generated_image_bytes, bytes):
-                print(f"Displaying generated image: {len(generated_image_bytes)} bytes")
-                st.image(generated_image_bytes, caption=get_text('generated_image'), width="stretch")
+                try:
+                    # Validate image before displaying
+                    temp_image = Image.open(BytesIO(generated_image_bytes))
+                    if temp_image.size[0] > 0 and temp_image.size[1] > 0:
+                        print(f"Displaying generated image: {len(generated_image_bytes)} bytes")
+                        st.image(generated_image_bytes, caption=get_text('generated_image'), width="stretch")
+                    else:
+                        print("Generated image has invalid dimensions")
+                        st.error("Error: Generated image has invalid dimensions")
+                except Exception as e:
+                    print(f"Error displaying generated image: {e}")
+                    st.error(f"Error displaying generated image: {str(e)}")
             else:
                 print(f"No image to display. Global: {latest_generated_image_bytes is not None}, Session: {st.session_state.get('latest_generated_image', None) is not None}")
             
