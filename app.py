@@ -991,7 +991,7 @@ YOU HAVE ACCESS TO THREE MEMORY TOOLS:
 
 1. **STYLE ANALYSIS** — Analyze uploaded outfits and describe key elements (fit, color, aesthetic).  
 2. **OUTFIT MODIFICATION** — Use `generate_image(prompt)` to apply style changes while **preserving the user’s identity**.  
-3. **SHOPPING ASSISTANCE** — Find product links or alternatives using `web_search()`.  
+3. **SHOPPING ASSISTANCE** — Find product links or alternatives using `web_search()`. **ALWAYS ask for country and budget if not already known** when the user requests outfit searches or links. Use `user_country()` to adapt to local trends and availability.  
 4. **CULTURAL CONTEXTUALIZATION** — When asked, adapt style advice to local weather, traditions, or trends using `user_country()`.  
 5. **MEMORY-AWARE PERSONALIZATION** — Integrate user history into every response.  
 6. **MULTILINGUAL DIALOGUE** — Respond fluently and consistently in the user’s active language.  
@@ -1830,12 +1830,12 @@ if prompt := st.chat_input(get_text('chat_placeholder')):
                 try:
                     # Validate image before displaying
                     temp_image = Image.open(BytesIO(generated_image_bytes))
-                    if temp_image.size[0] > 0 and temp_image.size[1] > 0:
+                    if temp_image.size[0] > 0 and temp_image.size[1] > 0 and temp_image.format:
                         print(f"Displaying generated image: {len(generated_image_bytes)} bytes")
                         st.image(generated_image_bytes, caption=get_text('generated_image'), width="stretch")
                     else:
-                        print("Generated image has invalid dimensions")
-                        st.error("Error: Generated image has invalid dimensions")
+                        print("Generated image has invalid dimensions or format")
+                        st.error("Error: Generated image has invalid dimensions or format")
                 except Exception as e:
                     print(f"Error displaying generated image: {e}")
                     st.error(f"Error displaying generated image: {str(e)}")
